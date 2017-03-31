@@ -34,11 +34,19 @@ const char *tarifToStr( uint8_t tarif )
     return( "UNKNOWN" );
 }
 
-/* 
- * Constructor
- * LED is set ON when ADCO label is found, until MOTDETAT where LED is set OFF.
+/**
+ * teleInfo:
+ * @rxPin: the pin number from which we get the serial data.
+ * @ledPin: [allow-none]: the pin number to which the thread LED is connected;
+ *  LED is set ON when ADCO label is found, until MOTDETAT where LED is set OFF.
+ * @hcPin: [allow-none]: the pin number to which HC LED is connected.
+ *  HC LED is ON during low price hours.
+ * @hpPin: [allow-none]: the pin number to which HP LED is connected;
+ *  HP LED is ON during full price hours.
+ * 
+ * Constructor.
  */
-teleInfo::teleInfo( uint8_t rxPin, uint8_t ledPin )
+teleInfo::teleInfo( uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin )
 {
     this->haveTeleinfo = false;
     
@@ -48,9 +56,9 @@ teleInfo::teleInfo( uint8_t rxPin, uint8_t ledPin )
 	  tiSerial->begin( 1200 );
     tiSerial->listen();
 
-    this->ledPin = ledPin;
-    digitalWrite( this->ledPin, LOW );
-    pinMode( this->ledPin, OUTPUT );
+    this->init_led( &this->ledPin, ledPin );
+    this->init_led( &this->hcPin, hcPin );
+    this->init_led( &this->hpPin, hpPin );
 }
 
 // destructor
@@ -60,6 +68,46 @@ teleInfo::~teleInfo()
         delete tiSerial;
     }
     digitalWrite( this->ledPin, LOW );
+}
+
+// LED initialization
+void teleInfo::init_led( uint8_t *dest, uint8_t pin )
+{
+    *dest = pin;
+
+    if( pin > 0 ){
+        led_off( pin );
+        pinMode( pin, OUTPUT );
+    }
+}
+
+// make a LED ON if pin number is set
+void teleInfo::led_on( uint8_t pin )
+{
+    if( pin > 0 ){
+        digitalWrite( pin, HIGH );
+    }
+}
+
+// make a LED OFF if pin number is set
+void teleInfo::led_off( uint8_t pin )
+{
+    if( pin > 0 ){
+        digitalWrite( pin, LOW );
+    }
+}
+
+// Set the HC/HP LEDs depending of the current value
+void teleInfo::set_hchp_state( const char *value )
+{
+    if( !strcmp( value, "HC.." )){
+        this->led_off( this->hpPin );
+        this->led_on( this->hcPin );
+
+    } else if( !strcmp( value, "HP.." )){
+        this->led_off( this->hcPin );
+        this->led_on( this->hpPin );
+    }
 }
 
 // save TI values in the (good) struct member
@@ -250,7 +298,7 @@ bool teleInfo::get( teleInfo_t *res )
 #endif
         // light on the LED on start of the group of trames
         if( !strcmp( label, TI_ADCO )){
-            digitalWrite( this->ledPin, HIGH );
+            this->led_on( this->ledPin );
         }
         // read the value right after the space, until next space
         // nb: the checksum does not considers this last trailing space
@@ -315,7 +363,13 @@ bool teleInfo::get( teleInfo_t *res )
 
         // if label is MOTDETAT then we have read all trames for this iteration
         if( !strcmp( label, TI_MOTDETAT )){
-            digitalWrite( this->ledPin, LOW );
+            this->led_off( this->ledPin );
+            break;
+        }
+
+        // set the HC/HP LEDs depending of the current state
+        if( !strcmp( label, TI_PTEC )){
+            this->set_hchp_state( value );
             break;
         }
 

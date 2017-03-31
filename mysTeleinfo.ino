@@ -111,7 +111,9 @@ MyMessage msgVAR4( 0, V_VAR4 );
 // teleInfo
 // - rxPin:  D4 (PCINT2 - Port D)
 // - ledPin: D5
-teleInfo TI( 4, 5 );
+// - hcPin:  D6
+// - hpPin:  D7
+teleInfo TI( 4, 5, 6, 7 );
 
 uint8_t tarif = 0;
 teleInfo_t last;                // last sent teleinfo datas

@@ -148,7 +148,7 @@ F 3 "" H 12650 7450 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 Text Notes 13400 10200 0    60   ~ 0
-2017-03-11
+v1.1: 2017-03-31
 $Comp
 L CONN_01X02 P2
 U 1 1 5860FA4A
@@ -207,16 +207,10 @@ $EndComp
 Wire Wire Line
 	14050 7800 13950 7800
 Wire Wire Line
-	12950 8000 13150 8000
-Wire Wire Line
-	13150 8000 13350 8000
+	12950 8000 13350 8000
 Connection ~ 13150 8000
 Wire Wire Line
-	12650 1400 12650 6400
-Wire Wire Line
-	12650 6400 12650 7200
-Wire Wire Line
-	12650 7200 12650 7300
+	12650 1400 12650 7300
 Wire Wire Line
 	12650 7200 13100 7200
 Wire Wire Line
@@ -285,17 +279,9 @@ Wire Wire Line
 Wire Wire Line
 	2950 6150 2950 9700
 Wire Wire Line
-	2950 9700 7500 9700
+	2950 9700 13150 9700
 Wire Wire Line
-	7500 9700 12650 9700
-Wire Wire Line
-	12650 9700 13150 9700
-Wire Wire Line
-	7500 6150 7500 6800
-Wire Wire Line
-	7500 6800 7500 9700
-Wire Wire Line
-	7500 9700 7500 9900
+	7500 6150 7500 9900
 Wire Wire Line
 	13950 8000 14450 8000
 Wire Wire Line
@@ -309,24 +295,12 @@ Wire Wire Line
 Wire Wire Line
 	14450 7850 14600 7850
 Wire Wire Line
-	7950 1400 10500 1400
+	7950 1400 14600 1400
 Wire Wire Line
-	10500 1400 11050 1400
-Wire Wire Line
-	11050 1400 11850 1400
-Wire Wire Line
-	11850 1400 12650 1400
-Wire Wire Line
-	12650 1400 14600 1400
-Wire Wire Line
-	7950 1250 7950 1400
-Wire Wire Line
-	7950 1400 7950 5100
+	7950 1250 7950 5100
 Connection ~ 7950 1400
 Wire Wire Line
-	12650 7550 12650 7700
-Wire Wire Line
-	12650 7700 12650 7750
+	12650 7550 12650 7750
 Wire Wire Line
 	13150 9700 13150 8900
 Connection ~ 7500 9700
@@ -347,27 +321,13 @@ Wire Wire Line
 Wire Wire Line
 	14300 6300 14600 6300
 Wire Wire Line
-	7500 6800 12900 6800
+	7500 6800 14600 6800
 Connection ~ 7500 6800
 Wire Wire Line
-	12900 1500 12900 2700
-Wire Wire Line
-	12900 2700 12900 4000
-Wire Wire Line
-	12900 4000 12900 5200
-Wire Wire Line
-	12900 5200 12900 6800
+	12900 1500 12900 6800
 Connection ~ 12900 6800
-Connection ~ 12900 5200
-Connection ~ 12900 4000
 Wire Wire Line
 	14600 1500 12900 1500
-Connection ~ 12900 2700
-Connection ~ 10500 1400
-Wire Wire Line
-	6300 5100 6300 2250
-Connection ~ 11050 1400
-Connection ~ 11850 1400
 Text Notes 12000 7700 0    60   ~ 0
 D4
 Text Notes 12000 6300 0    60   ~ 0
@@ -376,10 +336,46 @@ Wire Wire Line
 	7050 6150 7050 7700
 Wire Wire Line
 	6900 6150 6900 6300
-Text Notes 15050 6550 0    60   ~ 0
-LED Panel\n- Teleinfo\n- +5v\n- GND
+Text Notes 15050 6850 0    60   ~ 0
+LED Panel\n- Teleinfo (green)\n- +5v     (green)\n- HC LED (yellow)\n- HP LED (orange)\n\n- GND
 Wire Wire Line
 	14000 6400 14600 6400
+$Comp
+L R R6
+U 1 1 58DE3F97
+P 13550 6500
+F 0 "R6" V 13630 6500 50  0000 C CNN
+F 1 "220" V 13550 6500 50  0000 C CNN
+F 2 "" V 13480 6500 50  0000 C CNN
+F 3 "" H 13550 6500 50  0000 C CNN
+	1    13550 6500
+	0    -1   -1   0   
+$EndComp
 Wire Wire Line
-	12900 6800 14600 6800
+	13700 6500 14600 6500
+Wire Wire Line
+	6750 6150 6750 6500
+Wire Wire Line
+	6750 6500 13400 6500
+$Comp
+L R R7
+U 1 1 58DE4144
+P 13200 6600
+F 0 "R7" V 13280 6600 50  0000 C CNN
+F 1 "220" V 13200 6600 50  0000 C CNN
+F 2 "" V 13130 6600 50  0000 C CNN
+F 3 "" H 13200 6600 50  0000 C CNN
+	1    13200 6600
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	13350 6600 14600 6600
+Wire Wire Line
+	13050 6600 6600 6600
+Wire Wire Line
+	6600 6600 6600 6150
+Text Notes 11900 6500 0    60   ~ 0
+D6
+Text Notes 11750 6600 0    60   ~ 0
+D7
 $EndSCHEMATC

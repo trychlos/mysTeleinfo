@@ -1,0 +1,47 @@
+ mysTeleinfo - NEWS
+
+ Summary
+ =======
+ 
+   Version 1.1-2017
+   Version 1.0-2017
+
+-----------------------------------------------------------------------
+ Version 1.1-2017
+ ================
+
+ Released on 
+
+ New features and improvements:
+
+   - Have HC/HP LEDs (todo #1).
+
+ Bug fixes:
+
+   - 
+
+ Other changes:
+
+   - Let all the LEDs pin number be zero if no LED.
+
+-----------------------------------------------------------------------
+ Version 1.0-2017
+ ================
+
+ Released on 2017-3-24
+
+ New features and improvements:
+
+   - Initial commit: convert the serial Teleinfo protocol to a mySensors module.
+
+ Bug fixes:
+
+   - none (yet).
+
+ Other changes:
+
+   - none.
+
+-----------------------------------------------------------------------
+ P. Wieser - Created on 2017, mar. 31st
+

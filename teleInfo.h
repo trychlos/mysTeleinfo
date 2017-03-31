@@ -169,15 +169,21 @@ const char *tarifToStr( uint8_t tarif );
 
 class teleInfo {
   public:
-		teleInfo( uint8_t rxPin, uint8_t ledPin );
+		teleInfo( uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin );
 		~teleInfo();
 		bool get( teleInfo_t *data );
 
 	private:
 		pwiSoftwareSerial* tiSerial;
     uint8_t            ledPin;
+    uint8_t            hcPin;
+    uint8_t            hpPin;
     bool               haveTeleinfo;
 
+    void init_led( uint8_t *dest, uint8_t pin );
+    void led_on( uint8_t pin );
+    void led_off( uint8_t pin );
+    void set_hchp_state( const char *value );
     char read_next( void );
     bool read_until_end_of_line( void );
     bool read_label( char *buffer, uint8_t maxsize, uint8_t *chksum );
