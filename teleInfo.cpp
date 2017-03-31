@@ -59,6 +59,8 @@ teleInfo::teleInfo( uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin 
     this->init_led( &this->ledPin, ledPin );
     this->init_led( &this->hcPin, hcPin );
     this->init_led( &this->hpPin, hpPin );
+
+    this->cb = NULL;
 }
 
 // destructor
@@ -108,6 +110,12 @@ void teleInfo::set_hchp_state( const char *value )
         this->led_off( this->hcPin );
         this->led_on( this->hpPin );
     }
+}
+
+// Initialize the thread callback
+void teleInfo::set_thread_cb( threadCb cb )
+{
+    this->cb = cb;
 }
 
 // save TI values in the (good) struct member
@@ -361,6 +369,11 @@ bool teleInfo::get( teleInfo_t *res )
         Serial.println( "" );
 #endif
 
+        // call the thread callback if it has been set
+        if( this->cb ){
+            this->cb( label, value );
+        }
+        
         // if label is MOTDETAT then we have read all trames for this iteration
         if( !strcmp( label, TI_MOTDETAT )){
             this->led_off( this->ledPin );

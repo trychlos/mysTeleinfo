@@ -167,11 +167,19 @@ static const char * const TI_OPTARIF_BBR = "BBR";
 
 const char *tarifToStr( uint8_t tarif );
 
+/*
+ * Let the caller receive a copy of the thread
+ * If this callback is set, then it will be called on each received line
+ * with: cb( label, value )
+ */
+typedef void ( *threadCb )( const char *, const char * );
+
 class teleInfo {
   public:
 		teleInfo( uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin );
 		~teleInfo();
-		bool get( teleInfo_t *data );
+    bool get( teleInfo_t *data );
+		void set_thread_cb( threadCb cb );
 
 	private:
 		pwiSoftwareSerial* tiSerial;
@@ -179,6 +187,7 @@ class teleInfo {
     uint8_t            hcPin;
     uint8_t            hpPin;
     bool               haveTeleinfo;
+    threadCb           cb;
 
     void init_led( uint8_t *dest, uint8_t pin );
     void led_on( uint8_t pin );

@@ -108,6 +108,9 @@ MyMessage msgVAR5( 0, V_VAR5 );
 #define CHILD_ID_HHPHC      50
 MyMessage msgVAR4( 0, V_VAR4 );
 
+// send the full string as 'label=value'
+#define CHILD_ID_THREAD     60
+
 // teleInfo
 // - rxPin:  D4 (PCINT2 - Port D)
 // - ledPin: D5
@@ -185,6 +188,28 @@ void compareTI( const char *label, char *value, char *last, MyMessage &msg, int 
 }
 
 /*
+ * A thread callback to send the full thread to the master gateway
+ * as a text message 'label=value'
+ * 
+ * The max mySensors payload size is just 25 bytes!
+ */
+void thread_cb( const char *label, const char *value )
+{
+    char str[2*TI_BUFSIZE];
+    
+    if( strlen( label )){
+        if( strlen( value )){
+            sprintf( str, "%s=%s", label, value );
+        } else {
+            sprintf( str, "%s", label );
+        }
+#ifdef HAVE_NRF24_RADIO
+        send( msgVAR1.setSensor( CHILD_ID_THREAD ).set( str ) );
+#endif
+    }
+}
+
+/*
  * Setup the TeleInformations Client (TIC) sensor if available
  * A first read let us take the configuration of our own counter
  * and present only the relevant informations to the gateway
@@ -235,8 +260,8 @@ void presentation_teleinfo()
     Serial.print( F( " Tarif is " ));
     Serial.println( tarifToStr( tarif ));
 #endif
-#ifdef HAVE_NRF24_RADIO
     if( tarif > 0 ){
+#ifdef HAVE_NRF24_RADIO
         // communs a tout le monde
         present( CHILD_ID_ADCO,    S_POWER );
         present( CHILD_ID_OPTARIF, S_POWER );
@@ -246,6 +271,7 @@ void presentation_teleinfo()
         present( CHILD_ID_ADPS,    S_POWER );
         present( CHILD_ID_IMAX,    S_POWER );
         present( CHILD_ID_PAPP,    S_POWER );
+        present( CHILD_ID_THREAD,  S_POWER );
 
         switch( tarif ){
             case TI_TARIF_BASE:
@@ -269,13 +295,14 @@ void presentation_teleinfo()
                 present( CHILD_ID_BBR_HP_JR, S_POWER );
                 present( CHILD_ID_DEMAIN,    S_POWER );
                 break;
-            }
-            // cas particulier, appartient a EJP et TEMPO
-            if(( tarif & TI_TARIF_EJP ) || ( tarif & TI_TARIF_TEMPO )){
-                present( CHILD_ID_HHPHC,     S_POWER );
-            }
+        }
+        // cas particulier, appartient a EJP et TEMPO
+        if(( tarif & TI_TARIF_EJP ) || ( tarif & TI_TARIF_TEMPO )){
+            present( CHILD_ID_HHPHC,     S_POWER );
         }
 #endif // HAVE_NRF24_RADIO
+        TI.set_thread_cb( thread_cb );
+    }
 }
 #endif // HAVE_TELEINFO
 

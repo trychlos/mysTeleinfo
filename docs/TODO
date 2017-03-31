@@ -10,8 +10,6 @@
  Todo
  ====
 
-   2 2017- 3-31 retransmit the full trames to the master gateway
-
    3 2017- 3-31 retransmit data after a timeout even if not modified
 
    4
@@ -21,6 +19,9 @@
  ====
 
    1 2017- 3-31 have two leds for HC/HP
+     2017- 3-31 done
+
+   2 2017- 3-31 retransmit the full trames to the master gateway
      2017- 3-31 done
 
 -----------------------------------------------------------------------

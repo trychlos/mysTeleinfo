@@ -15,6 +15,7 @@
  New features and improvements:
 
    - Have HC/HP LEDs (todo #1).
+   - Retransmit the thread to the master gateway (todo #2).
 
  Bug fixes:
 
