@@ -103,12 +103,16 @@
 
 typedef struct {
   	char     ADCO[TI_BUFSIZE];      // Adresse du concentrateur de téléreport (identifiant du compteur)
+    uint8_t  last_adco;             //    last day number the information has been sent
 	  char     OPTARIF[TI_BUFSIZE];   // Option tarifaire choisie (type d’abonnement)
+    uint8_t  last_optarif;          //    last day number the information has been sent
   	uint8_t  ISOUSC;                // Intensité souscrite 2chars (A)
+    uint8_t  last_isousc;           //    last day number the information has been sent
 	  char     PTEC[TI_BUFSIZE];      // Période tarifaire en cours
   	uint8_t  IINST;                 // Intensité instantanée (A)
 	  uint8_t  ADPS;                  // Avertissement de dépassement de puissance souscrite (A)
   	uint8_t  IMAX;                  // Intensité maximale (A)
+    uint8_t  last_imax;             //    last day number the information has been sent
 	  uint32_t PAPP;                  // Puissance apparente (VA)
   	uint32_t BASE;                  // Index si option = base (Wh)
 	  uint32_t HC_HC;                 // Index heures creuses si option = heures creuses (Wh)

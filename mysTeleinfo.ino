@@ -44,6 +44,8 @@ static const char * const thisSketchVersion = "1.0-2017";
 #endif // HAVE_NRF24_RADIO
 #include <MySensors.h>
 
+#include <Time.h>
+
 /* **************************************************************************************
  * MySensors gateway
  */
@@ -130,9 +132,16 @@ static const char * const ti_to       = " to ";
  * Compare 2 valeurs
  * Si il y a eu un changement, le sauvegarde et l'envoie à la gateway
  */
-void compareTI( const char *label, uint32_t value, uint32_t &last, MyMessage &msg, int SENSOR_ID )
+void compareTI( const char *label, uint32_t value, uint32_t &last, MyMessage &msg, int SENSOR_ID, uint8_t *plast = NULL )
 {
-    if( last == value ) return;
+    if( last == value ){
+        if( plast ){
+            time_t t = now();
+            uint8_t d = day( t );
+            if( d == *plast ) return;
+            *plast = d;
+        }
+    }
 #ifdef DEBUG_ENABLED
     Serial.print( ti_teleInfo ); Serial.print( label );
     Serial.print( ti_changed );  Serial.print( last );
@@ -144,9 +153,16 @@ void compareTI( const char *label, uint32_t value, uint32_t &last, MyMessage &ms
 #endif
 }
 
-void compareTI( const char *label, uint8_t value, uint8_t &last, MyMessage &msg, int SENSOR_ID )
+void compareTI( const char *label, uint8_t value, uint8_t &last, MyMessage &msg, int SENSOR_ID, uint8_t *plast = NULL )
 {
-    if( last == value ) return;
+    if( last == value ){
+        if( plast ){
+            time_t t = now();
+            uint8_t d = day( t );
+            if( d == *plast ) return;
+            *plast = d;
+        }
+    }
 #ifdef DEBUG_ENABLED
     Serial.print( ti_teleInfo ); Serial.print( label );
     Serial.print( ti_changed );  Serial.print( last );
@@ -158,9 +174,16 @@ void compareTI( const char *label, uint8_t value, uint8_t &last, MyMessage &msg,
 #endif
 }
 
-void compareTI( const char *label, char value, char &last, MyMessage &msg, int SENSOR_ID )
+void compareTI( const char *label, char value, char &last, MyMessage &msg, int SENSOR_ID, uint8_t *plast = NULL )
 {
-    if( last == value ) return;
+    if( last == value ){
+        if( plast ){
+            time_t t = now();
+            uint8_t d = day( t );
+            if( d == *plast ) return;
+            *plast = d;
+        }
+    }
 #ifdef DEBUG_ENABLED
     Serial.print( ti_teleInfo ); Serial.print( label );
     Serial.print( ti_changed );  Serial.print( last );
@@ -172,9 +195,16 @@ void compareTI( const char *label, char value, char &last, MyMessage &msg, int S
 #endif
 }
 
-void compareTI( const char *label, char *value, char *last, MyMessage &msg, int SENSOR_ID )
+void compareTI( const char *label, char *value, char *last, MyMessage &msg, int SENSOR_ID, uint8_t *plast = NULL )
 {
-    if( strcmp( last, value ) == 0 ) return;
+    if( strcmp( last, value ) == 0 ){
+        if( plast ){
+            time_t t = now();
+            uint8_t d = day( t );
+            if( d == *plast ) return;
+            *plast = d;
+        }
+    }
 #ifdef DEBUG_ENABLED
     Serial.print( ti_teleInfo ); Serial.print( label );
     Serial.print( ti_changed );  Serial.print( last );
@@ -344,13 +374,13 @@ void loop()
      *  only sending modified data to the gateway
      */
     if( tarif > 0 && TI.get( &currentTI )){
-        compareTI( TI_ADCO, currentTI.ADCO, last.ADCO, msgVAR1, CHILD_ID_ADCO );
-        compareTI( TI_OPTARIF, currentTI.OPTARIF, last.OPTARIF, msgVAR2, CHILD_ID_OPTARIF );
-        compareTI( TI_ISOUSC, currentTI.ISOUSC, last.ISOUSC, msgCURRENT, CHILD_ID_ISOUSC );
+        compareTI( TI_ADCO, currentTI.ADCO, last.ADCO, msgVAR1, CHILD_ID_ADCO, &last.last_adco );
+        compareTI( TI_OPTARIF, currentTI.OPTARIF, last.OPTARIF, msgVAR2, CHILD_ID_OPTARIF, &last.last_optarif );
+        compareTI( TI_ISOUSC, currentTI.ISOUSC, last.ISOUSC, msgCURRENT, CHILD_ID_ISOUSC, &last.last_isousc );
         compareTI( TI_PTEC, currentTI.PTEC, last.PTEC, msgVAR3, CHILD_ID_PTEC );
         compareTI( TI_IINST, currentTI.IINST, last.IINST, msgCURRENT, CHILD_ID_IINST );
         compareTI( TI_ADPS, currentTI.ADPS, last.ADPS, msgCURRENT, CHILD_ID_ADPS );
-        compareTI( TI_IMAX, currentTI.IMAX, last.IMAX, msgCURRENT, CHILD_ID_IMAX );
+        compareTI( TI_IMAX, currentTI.IMAX, last.IMAX, msgCURRENT, CHILD_ID_IMAX, &last.last_imax );
         compareTI( TI_PAPP, currentTI.PAPP, last.PAPP, msgWATT, CHILD_ID_PAPP );
         switch( tarif ){
             case TI_TARIF_BASE:

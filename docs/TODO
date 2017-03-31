@@ -10,8 +10,6 @@
  Todo
  ====
 
-   3 2017- 3-31 retransmit data after a timeout even if not modified
-
    4
 
 -----------------------------------------------------------------------
@@ -23,6 +21,9 @@
 
    2 2017- 3-31 retransmit the full trames to the master gateway
      2017- 3-31 done
+
+   3 2017- 3-31 retransmit data after a timeout even if not modified
+     2017- 3-31 done with a 1-day timeout on fix variables only
 
 -----------------------------------------------------------------------
  P. Wieser - Created on 2017, mar. 31st
