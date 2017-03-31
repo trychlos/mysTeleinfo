@@ -1,0 +1,42 @@
+Sources
+=======
+http://lhuet.github.io/blog/2014/01/montage-teleinfo.html
+http://www.magdiblog.fr/gpio/teleinfo-edf-suivi-conso-de-votre-compteur-electrique/
+https://hallard.me/demystifier-la-teleinfo/
+https://www.jeedom.com/doc/documentation/plugins/teleinfo/fr_FR/teleinfo
+https://www.kzenjoy.net/2015/la-teleinformation-sous-jeedom/
+http://playground.arduino.cc/Code/Interrupts
+https://github.com/jaysee/teleInfo
+
+Principe
+========
+Board Arduino Nano + NRF24L01 mySensors radio module -> Jeedom
+
+We are using:
+
+  Teleinfo:
+    - one digital input serial data
+    - one digital output for LED
+
+IRQ
+===
+
+The hardware IRQ0/IRQ1 (D2/D3) are left free.
+
+http://playground.arduino.cc/Main/PinChangeInterrupt
+https://code.google.com/archive/p/arduino-pinchangeint/issues/7
+---------------------------------------------------------------
+Due to the presence of the NRF24 radio module, the PCINT0 vector has only one free pin.
+This pin is allocated to Teleinfo input serial (and so to SoftwareSerial library).
+
+We choose to only use the single PCINT1 vector to all other three DRS155 modules.
+So that PCINT2 vector (port D) may be left unused.
+
+11/03/2017
+==========
+It happens that the Arduino Nano is not able to handle both the teleInfo and the DRS155 codes
+because the whole program needs 1937 bytes of heap frame on a 2048 total available.
+So we build two sensors:
+- mysTeleinfo
+- mysDrs155.
+
