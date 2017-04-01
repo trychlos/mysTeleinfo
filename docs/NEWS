@@ -3,20 +3,21 @@
  Summary
  =======
  
-   Version 1.1-2017
+   Version 1.4-2017
    Version 1.0-2017
 
 -----------------------------------------------------------------------
- Version 1.1-2017
+ Version 1.4-2017
  ================
 
- Released on 
+ Released on 2017-04-01
 
  New features and improvements:
 
    - Have HC/HP LEDs (todo #1).
    - Retransmit the thread to the master gateway (todo #2).
    - Retransmit fix variables once every day (todo #3).
+   - Retransmit each variable on request.
 
  Bug fixes:
 

@@ -128,16 +128,19 @@ typedef struct {
   	uint32_t BBR_HP_JR;             // Index heures pleines jours rouges si option = tempo (Wh)
     char     DEMAIN[TI_BUFSIZE];    // Couleur du lendemain si option = tempo
 	  char     HHPHC;                 // Groupe horaire si option = heures creuses ou tempo
+    uint8_t  last_hhphc;            //    last day number the information has been sent
 }
     teleInfo_t;
 
 /*
  * Associe une valeur numérique aux options tarifaires
  */
-#define TI_TARIF_BASE          1
-#define TI_TARIF_HCHP          2
-#define TI_TARIF_EJP           4
-#define TI_TARIF_TEMPO         8
+enum {
+    TI_TARIF_BASE = 1,
+    TI_TARIF_HCHP,
+    TI_TARIF_EJP,
+    TI_TARIF_TEMPO
+};
 
 /*
  * Define static strings
@@ -184,6 +187,9 @@ class teleInfo {
 		~teleInfo();
     bool get( teleInfo_t *data );
 		void set_thread_cb( threadCb cb );
+    void set_from_str( const char *str );
+    bool get_honor_thread_cb( void );
+    void set_honor_thread_cb( bool honor );
 
 	private:
 		pwiSoftwareSerial* tiSerial;
@@ -192,12 +198,15 @@ class teleInfo {
     uint8_t            hpPin;
     bool               haveTeleinfo;
     bool               honorThreadCb;
+    uint8_t            rateThreadCb;
+    uint8_t            countThreadCb;
     threadCb           cb;
 
     void init_led( uint8_t *dest, uint8_t pin );
     void led_on( uint8_t pin );
     void led_off( uint8_t pin );
     void set_hchp_state( const char *value );
+    void try_thread_cb( const char *label, const char *value );
     char read_next( void );
     bool read_until_end_of_line( void );
     bool read_label( char *buffer, uint8_t maxsize, uint8_t *chksum );

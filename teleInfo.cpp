@@ -62,6 +62,8 @@ teleInfo::teleInfo( uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin 
 
     this->cb = NULL;
     this->honorThreadCb = false;
+    this->rateThreadCb = 10;
+    this->countThreadCb = 0;
 }
 
 // destructor
@@ -100,6 +102,33 @@ void teleInfo::led_off( uint8_t pin )
     }
 }
 
+// Setters from a string
+// The string may have been received as a mySensors payload message
+// The string is of the form: <var>=<value>, with:
+// - <var>="hTC" for honorThreadCb
+// - value="1|0" for true or false
+//
+void teleInfo::set_from_str( const char *payload )
+{
+    char *p = strstr( payload, ";" );
+    if( p ){
+        if( !strncmp( payload, "hTC", p-payload )){
+            bool ok = false;
+            bool honor;
+            if( !strcmp( p+1, "0" )){
+                ok = true;
+                honor = false;
+            } else if( !strcmp( p+1, "1" )){
+                ok = true;
+                honor = false;
+            }
+            if( ok ){
+                this->set_honor_thread_cb( honor );
+            }
+        }
+    }
+}
+
 // Set the HC/HP LEDs depending of the current value
 //
 void teleInfo::set_hchp_state( const char *value )
@@ -114,6 +143,18 @@ void teleInfo::set_hchp_state( const char *value )
     }
 }
 
+// get/set the honorThreadCb flag
+//
+bool teleInfo::get_honor_thread_cb( void )
+{
+    return( this->honorThreadCb );
+}
+
+void teleInfo::set_honor_thread_cb( bool honor )
+{
+    this->honorThreadCb = honor;
+}
+
 // Initialize the thread callback
 //
 // NOTE:
@@ -124,6 +165,19 @@ void teleInfo::set_hchp_state( const char *value )
 void teleInfo::set_thread_cb( threadCb cb )
 {
     this->cb = cb;
+}
+
+// Try to activate the thread callback
+//
+void teleInfo::try_thread_cb( const char *label, const char *value )
+{
+    if( this->honorThreadCb && this->cb ){
+        this->countThreadCb += 1;
+        if( this->countThreadCb == this->rateThreadCb ){
+            this->countThreadCb = 0;
+            this->cb( label, value );
+        }
+    }
 }
 
 // save TI values in the (good) struct member
@@ -316,6 +370,7 @@ bool teleInfo::get( teleInfo_t *res )
         if( !strcmp( label, TI_ADCO )){
             this->led_on( this->ledPin );
         }
+
         // read the value right after the space, until next space
         // nb: the checksum does not considers this last trailing space
         memset( value, '\0', sizeof( value ));
@@ -378,9 +433,7 @@ bool teleInfo::get( teleInfo_t *res )
 #endif
 
         // call the thread callback if it has been set
-        if( this->honorThreadCb && this->cb ){
-            this->cb( label, value );
-        }
+        try_thread_cb( label, value );
         
         // if label is MOTDETAT then we have read all trames for this iteration
         if( !strcmp( label, TI_MOTDETAT )){
@@ -391,7 +444,6 @@ bool teleInfo::get( teleInfo_t *res )
         // set the HC/HP LEDs depending of the current state
         if( !strcmp( label, TI_PTEC )){
             this->set_hchp_state( value );
-            break;
         }
 
         // sauvegarde la value dans le bon element de la structure
