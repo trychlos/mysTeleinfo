@@ -61,6 +61,7 @@ teleInfo::teleInfo( uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin 
     this->init_led( &this->hpPin, hpPin );
 
     this->cb = NULL;
+    this->honorThreadCb = false;
 }
 
 // destructor
@@ -100,6 +101,7 @@ void teleInfo::led_off( uint8_t pin )
 }
 
 // Set the HC/HP LEDs depending of the current value
+//
 void teleInfo::set_hchp_state( const char *value )
 {
     if( !strcmp( value, "HC.." )){
@@ -113,6 +115,12 @@ void teleInfo::set_hchp_state( const char *value )
 }
 
 // Initialize the thread callback
+//
+// NOTE:
+// Raw transmission rate is about one frames group every 0.55sec
+// (135 chars in 11 lines). From mySensors point of view, this
+// corresponds to about 20 messages of 19 chars each per second.
+//
 void teleInfo::set_thread_cb( threadCb cb )
 {
     this->cb = cb;
@@ -370,7 +378,7 @@ bool teleInfo::get( teleInfo_t *res )
 #endif
 
         // call the thread callback if it has been set
-        if( this->cb ){
+        if( this->honorThreadCb && this->cb ){
             this->cb( label, value );
         }
         

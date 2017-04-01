@@ -1,6 +1,6 @@
 Dump of 10 first seconds of run
 ===============================
-  We may see that the mean charactec transmission rate is ~5kbps
+  We may see that the mean character transmission rate is ~5kbps
   (much greater that the 1200 bps of the specification).
 
 teleInfo::get

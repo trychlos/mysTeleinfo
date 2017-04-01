@@ -191,6 +191,7 @@ class teleInfo {
     uint8_t            hcPin;
     uint8_t            hpPin;
     bool               haveTeleinfo;
+    bool               honorThreadCb;
     threadCb           cb;
 
     void init_led( uint8_t *dest, uint8_t pin );
