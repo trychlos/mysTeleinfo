@@ -61,10 +61,11 @@
 
  This project includes:
 
- - docs/resources: the external documentation used for the project
- - docs/NanoConnection.ods: the pins allocation of the Arduino Nano
- - kicad/: the electronic scheme
- - pcb/: the built PCB
+ - docs/: the external documentation used for the project
+ - build/: the build resources:
+   > Arduino Nano pins layout
+   > Kicad electronic scheme
+   > the built PCB
  - images/: the .png images used as Jeedom widgets
  - mysTeleinfo.ino: the main Arduino program
  - pwiSoftwareSerial.{h,cpp}: a hacked version of the SoftwareSerial
