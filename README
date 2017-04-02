@@ -1,42 +1,112 @@
-Sources
-=======
-http://lhuet.github.io/blog/2014/01/montage-teleinfo.html
-http://www.magdiblog.fr/gpio/teleinfo-edf-suivi-conso-de-votre-compteur-electrique/
-https://hallard.me/demystifier-la-teleinfo/
-https://www.jeedom.com/doc/documentation/plugins/teleinfo/fr_FR/teleinfo
-https://www.kzenjoy.net/2015/la-teleinformation-sous-jeedom/
-http://playground.arduino.cc/Code/Interrupts
-https://github.com/jaysee/teleInfo
+ mysTeleinfo - README
 
-Principe
-========
-Board Arduino Nano + NRF24L01 mySensors radio module -> Jeedom
+ Summary
+ =======
+ 
+   What is it
+   Input/Outputs
+   Features
+   Project content
+   Notes
+     Interruption management
+   Known bugs and limitations
+     Limitations
+     Bugs
+   Sources
 
-We are using:
+-----------------------------------------------------------------------
+ What is it
+ ==========
 
-  Teleinfo:
-    - one digital input serial data
-    - one digital output for LED
+ mysTeleinfo is a MySensors v2 node
+             built on an Arduino Nano
+             which decodes EdF Teleinformation thread
+             and sends its datas to a Jeedom controller
+             via a MySensors v2 serial gateway
+             through a NRF24L01 radio communication.
 
-IRQ
-===
+-----------------------------------------------------------------------
+ Input/Outputs
+ =============
 
-The hardware IRQ0/IRQ1 (D2/D3) are left free.
+ Input is:
+   EdF Teleinformation.
 
-http://playground.arduino.cc/Main/PinChangeInterrupt
-https://code.google.com/archive/p/arduino-pinchangeint/issues/7
----------------------------------------------------------------
-Due to the presence of the NRF24 radio module, the PCINT0 vector has only one free pin.
-This pin is allocated to Teleinfo input serial (and so to SoftwareSerial library).
+ Outputs are:
+   Datas to Jeedom controller
+   A thread LED which is on during thread reception
+   A HC (resp. HP) LED on during HC (resp. HP) hours.
 
-We choose to only use the single PCINT1 vector to all other three DRS155 modules.
-So that PCINT2 vector (port D) may be left unused.
+-----------------------------------------------------------------------
+ Features
+ ========
 
-11/03/2017
-==========
-It happens that the Arduino Nano is not able to handle both the teleInfo and the DRS155 codes
-because the whole program needs 1937 bytes of heap frame on a 2048 total available.
-So we build two sensors:
-- mysTeleinfo
-- mysDrs155.
+ This project features:
+
+ - the interpretation of the EdF Teleinformation thread and its
+   transmission to the MySensors gateway
+
+ - a behavior witness via a thread LED which is on during the
+   reception of each EdF Teleinformation thread
+
+ - a HC LED which is on during low price hours
+
+ - a HP LED which is on during high prices hours
+
+ - all datas may be retransmitted on request.
+
+-----------------------------------------------------------------------
+ Project content
+ ===============
+
+ This project includes:
+
+ - docs/resources: the external documentation used for the project
+ - docs/NanoConnection.ods: the pins allocation of the Arduino Nano
+ - kicad/: the electronic scheme
+ - pcb/: the built PCB
+ - images/: the .png images used as Jeedom widgets
+ - mysTeleinfo.ino: the main Arduino program
+ - pwiSoftwareSerial.{h,cpp}: a hacked version of the SoftwareSerial
+   library (see NOTES)
+ - teleInfo.{h,cpp}: the class used to decode the EdF Teleinformation
+   thread
+ - teleInfo.dump: a log of the debug output.
+
+-----------------------------------------------------------------------
+ Notes
+ =====
+
+   Interruption management
+
+   The hardware IRQ0/IRQ1 (D2/D3) are left free.
+   Most of the NRF24 radio module makes use of PortB (PCINT0) pins.
+   For this reason, we have chosen to use a PortB (PCINT2) pin to use
+   as input for teleinformation.
+   Input is managed via SoftwareSerial library. We are using an hacked
+   version in order to optimize the software interrupt management.
+
+-----------------------------------------------------------------------
+ Known bugs and limitations
+ ==========================
+
+   Cf. TODO
+
+-----------------------------------------------------------------------
+ Sources
+ =======
+
+ http://lhuet.github.io/blog/2014/01/montage-teleinfo.html
+ http://www.magdiblog.fr/gpio/teleinfo-edf-suivi-conso-de-votre-compteur-electrique/
+ https://hallard.me/demystifier-la-teleinfo/
+ https://www.jeedom.com/doc/documentation/plugins/teleinfo/fr_FR/teleinfo
+ https://www.kzenjoy.net/2015/la-teleinformation-sous-jeedom/
+ http://playground.arduino.cc/Code/Interrupts
+ https://github.com/jaysee/teleInfo
+ http://playground.arduino.cc/Main/PinChangeInterrupt
+ https://code.google.com/archive/p/arduino-pinchangeint/issues/7
+
+-----------------------------------------------------------------------
+ P. Wieser - Created on 2017, mar. 31st
+             Last updated on 2017, apr. 2nd
 
