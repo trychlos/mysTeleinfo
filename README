@@ -9,6 +9,7 @@
    Project content
    Notes
      Interruption management
+   Interactions
    Known bugs and limitations
      Limitations
      Bugs
@@ -86,6 +87,219 @@
    as input for teleinformation.
    Input is managed via SoftwareSerial library. We are using an hacked
    version in order to optimize the software interrupt management.
+
+-----------------------------------------------------------------------
+ Interactions
+ ============
+
+ The MySensors node present one main ID to the controller, to manage global
+ actions and request or set global parameters
+ (see. also https://www.jeedom.com/forum/viewtopic.php?f=35&t=26867
+  on child_id's definitions).
+
+ For each configurable parameter:
+ - define a specific ChildId
+ - parse a received C_SET command with V_CUSTOM message and payload
+ - parse a received C_REQ command
+ - send a V_VAR1 message to the controller with the value
+
+ Below interactions are defined from MySensors node point of view.
+
+ - CHILD_ID_ADCO (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_SET
+    |   |   |
+    |   |   +- V_CUSTOM with payload = '1': reset the EEPROM to its default values.
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last ADCO trame.
+    |
+    +- Sent to controller
+        |
+        +- V_VAR1: ADCO identifier.
+
+ - CHILD_ID_OPTARIF (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last OPTARIF trame.
+    |
+    +- Sent to controller
+        |
+        +- V_VAR2: OPTARIF pricing option.
+
+ - CHILD_ID_ISOUSC (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last ISOUSC trame.
+    |
+    +- Sent to controller
+        |
+        +- V_CURRENT: ISOUSC subscribed intensity.
+
+ - CHILD_ID_PTEC (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last PTEC trame.
+    |
+    +- Sent to controller
+        |
+        +- V_VAR3: PTEC current pricing period.
+
+ - CHILD_ID_IINST (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last IINST trame.
+    |
+    +- Sent to controller
+        |
+        +- V_CURRENT: IINST current intensity.
+
+ - CHILD_ID_ADPS (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last ADPS trame.
+    |
+    +- Sent to controller
+        |
+        +- V_CURRENT: ADPS excess use alert.
+
+ - CHILD_ID_IMAX (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last IMAX trame.
+    |
+    +- Sent to controller
+        |
+        +- V_CURRENT: IMAX max used intensity.
+
+ - CHILD_ID_PAPP (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last PAPP trame.
+    |
+    +- Sent to controller
+        |
+        +- V_POWER: PAPP current power.
+
+ - CHILD_ID_HC_HC (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last HC_HC trame.
+    |
+    +- Sent to controller
+        |
+        +- V_KWH: HC_HC low price index.
+
+ - CHILD_ID_HC_HP (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last HC_HP trame.
+    |
+    +- Sent to controller
+        |
+        +- V_KWH: HC_HP high price index.
+
+ - CHILD_ID_HHPHC (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: re-send the last HHPHC trame.
+    |
+    +- Sent to controller
+        |
+        +- V_VAR4: HP/HC low/high pricing periods indicator.
+
+ - CHILD_ID_THREAD (S_POWER)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_SET
+    |       |
+    |       +- V_CUSTOM with payload = '1' (resp. '0'): enable (resp. disable) the transmission of brut strings.
+    |
+    +- Sent to controller
+        |
+        +- V_VAR1: the last read trame.
+
+ - CHILD_MAINTIMER (S_CUSTOM)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_SET
+    |   |   |
+    |   |   +- V_CUSTOM with payload = '1=<value>': set the main timer period (ms).
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: send the main timer period (ms).
+    |
+    +- Sent to controller
+        |
+        +- V_VAR1: the main timer period (ms).
+
+ - CHILD_CHANGEDTIMER (S_CUSTOM)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_SET
+    |   |   |
+    |   |   +- V_CUSTOM with payload = '1=<value>': set the max frequency (ms).
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: send the max frequency (ms).
+    |
+    +- Sent to controller
+        |
+        +- V_VAR1: the max frequency (ms).
+
+ - CHILD_UNCHANGEDTIMER (S_CUSTOM)
+    |
+    +- Received from controller
+    |   |
+    |   +- C_SET
+    |   |   |
+    |   |   +- V_CUSTOM with payload = '1=<value>': set the unchanged timeout (ms).
+    |   |
+    |   +- C_REQ
+    |       |
+    |       +- <any>: send the unchanged timeout (ms).
+    |
+    +- Sent to controller
+        |
+        +- V_VAR1: the unchanged timeout (ms).
 
 -----------------------------------------------------------------------
  Known bugs and limitations

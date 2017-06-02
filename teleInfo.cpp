@@ -450,25 +450,25 @@ bool teleInfo::get( teleInfo_t *res )
         if( !save( label, TI_ADCO, value, res->ADCO ) &&
             !save( label, TI_OPTARIF, value, res->OPTARIF ) &&
             !save( label, TI_ISOUSC, value, res->ISOUSC ) &&
-            !save( label, TI_BASE, value, res->BASE ) &&
-            !save( label, TI_HCHC, value, res->HC_HC ) &&
-            !save( label, TI_HCHP, value, res->HC_HP ) &&
-            !save( label, TI_EJPHN, value, res->EJP_HN ) &&
-            !save( label, TI_EJPHPM, value, res->EJP_HPM ) &&
-            !save( label, TI_BBRHCJB, value, res->BBR_HC_JB ) &&
-            !save( label, TI_BBRHPJB, value, res->BBR_HP_JB ) &&
-            !save( label, TI_BBRHCJW, value, res->BBR_HC_JW ) &&
-            !save( label, TI_BBRHPJW, value, res->BBR_HP_JW ) &&
-            !save( label, TI_BBRHCJR, value, res->BBR_HC_JR ) &&
-            !save( label, TI_BBRHPJR, value, res->BBR_HP_JR ) &&
-            !save( label, TI_PEJP, value, res->PEJP ) &&
             !save( label, TI_PTEC, value, res->PTEC ) &&
-            !save( label, TI_DEMAIN, value, res->DEMAIN ) &&
             !save( label, TI_IINST, value, res->IINST ) &&
             !save( label, TI_ADPS, value, res->ADPS ) &&
             !save( label, TI_IMAX, value, res->IMAX ) &&
             !save( label, TI_PAPP, value, res->PAPP ) &&
-            !save( label, TI_HHPHC, value[0], res->HHPHC )){
+            !save( label, TI_BASE, value, res->b.BASE ) &&
+            !save( label, TI_HHPHC, value[0], res->h.HHPHC ) &&
+            !save( label, TI_HCHC, value, res->h.cp.HC_HC ) &&
+            !save( label, TI_HCHP, value, res->h.cp.HC_HP ) &&
+            !save( label, TI_EJPHN, value, res->h.ejp.EJP_HN ) &&
+            !save( label, TI_EJPHPM, value, res->h.ejp.EJP_HPM ) &&
+            !save( label, TI_PEJP, value, res->h.ejp.PEJP ) &&
+            !save( label, TI_BBRHCJB, value, res->h.bbr.BBR_HC_JB ) &&
+            !save( label, TI_BBRHPJB, value, res->h.bbr.BBR_HP_JB ) &&
+            !save( label, TI_BBRHCJW, value, res->h.bbr.BBR_HC_JW ) &&
+            !save( label, TI_BBRHPJW, value, res->h.bbr.BBR_HP_JW ) &&
+            !save( label, TI_BBRHCJR, value, res->h.bbr.BBR_HC_JR ) &&
+            !save( label, TI_BBRHPJR, value, res->h.bbr.BBR_HP_JR ) &&
+            !save( label, TI_DEMAIN, value, res->h.bbr.DEMAIN )){
                 // what do do here ?
 #ifdef TI_DEBUG
                 Serial.print( F( "Unknown label=" ));

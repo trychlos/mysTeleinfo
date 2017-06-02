@@ -103,32 +103,41 @@
 
 typedef struct {
   	char     ADCO[TI_BUFSIZE];      // Adresse du concentrateur de téléreport (identifiant du compteur)
-    uint8_t  last_adco;             //    last day number the information has been sent
 	  char     OPTARIF[TI_BUFSIZE];   // Option tarifaire choisie (type d’abonnement)
-    uint8_t  last_optarif;          //    last day number the information has been sent
   	uint8_t  ISOUSC;                // Intensité souscrite 2chars (A)
-    uint8_t  last_isousc;           //    last day number the information has been sent
 	  char     PTEC[TI_BUFSIZE];      // Période tarifaire en cours
   	uint8_t  IINST;                 // Intensité instantanée (A)
 	  uint8_t  ADPS;                  // Avertissement de dépassement de puissance souscrite (A)
   	uint8_t  IMAX;                  // Intensité maximale (A)
-    uint8_t  last_imax;             //    last day number the information has been sent
 	  uint32_t PAPP;                  // Puissance apparente (VA)
-  	uint32_t BASE;                  // Index si option = base (Wh)
-	  uint32_t HC_HC;                 // Index heures creuses si option = heures creuses (Wh)
-  	uint32_t HC_HP;                 // Index heures pleines si option = heures creuses (Wh)
-	  uint32_t EJP_HN;                // Index heures normales si option = EJP (Wh)
-  	uint32_t EJP_HPM;               // Index heures de pointe mobile si option = EJP (Wh)
-	  uint8_t  PEJP;                  // Préavis EJP si option = EJP 30mn avant période EJP (mn)
-    uint32_t BBR_HC_JB;             // Index heures creuses jours bleus si option = tempo (Wh)
-   	uint32_t BBR_HP_JB;             // Index heures pleines jours bleus si option = tempo (Wh)
-	  uint32_t BBR_HC_JW;             // Index heures creuses jours blancs si option = tempo (Wh)
-  	uint32_t BBR_HP_JW;             // Index heures pleines jours blancs si option = tempo (Wh)
-	  uint32_t BBR_HC_JR;             // Index heures creuses jours rouges si option = tempo (Wh)
-  	uint32_t BBR_HP_JR;             // Index heures pleines jours rouges si option = tempo (Wh)
-    char     DEMAIN[TI_BUFSIZE];    // Couleur du lendemain si option = tempo
-	  char     HHPHC;                 // Groupe horaire si option = heures creuses ou tempo
-    uint8_t  last_hhphc;            //    last day number the information has been sent
+    union {
+        struct {
+            uint32_t BASE;                  // Index si option = base (Wh)
+        } b;
+        struct {
+            char     HHPHC;                 // Groupe horaire si option = heures creuses ou tempo
+            union {
+                struct {
+                    uint32_t HC_HC;                 // Index heures creuses si option = heures creuses (Wh)
+                    uint32_t HC_HP;                 // Index heures pleines si option = heures creuses (Wh)
+                } cp;
+                struct {
+                    uint32_t EJP_HN;                // Index heures normales si option = EJP (Wh)
+                    uint32_t EJP_HPM;               // Index heures de pointe mobile si option = EJP (Wh)
+                    uint8_t  PEJP;                  // Préavis EJP si option = EJP 30mn avant période EJP (mn)
+                } ejp;
+                struct {
+                    uint32_t BBR_HC_JB;             // Index heures creuses jours bleus si option = tempo (Wh)
+                    uint32_t BBR_HP_JB;             // Index heures pleines jours bleus si option = tempo (Wh)
+                    uint32_t BBR_HC_JW;             // Index heures creuses jours blancs si option = tempo (Wh)
+                    uint32_t BBR_HP_JW;             // Index heures pleines jours blancs si option = tempo (Wh)
+                    uint32_t BBR_HC_JR;             // Index heures creuses jours rouges si option = tempo (Wh)
+                    uint32_t BBR_HP_JR;             // Index heures pleines jours rouges si option = tempo (Wh)
+                    char     DEMAIN[TI_BUFSIZE];    // Couleur du lendemain si option = tempo
+                } bbr;
+            };
+        } h;
+    };
 }
     teleInfo_t;
 

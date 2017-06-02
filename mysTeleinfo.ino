@@ -15,6 +15,7 @@
  * NOTE: this sketch has been written for MySensor v 2.1 library.
  * 
  * pwi 2017- 3-25 creation
+ * pwi 2017- 5-27 v2.0 use configurable pwiTimer class
  */
 
 // uncomment for debugging this sketch
@@ -26,8 +27,26 @@
 // uncomment for having TeleInfo code
 #define HAVE_TELEINFO
 
+#include "eeprom.h"
+#include "pwi_timer.h"
+
 static const char * const thisSketchName    = "mysTeleinfo";
-static const char * const thisSketchVersion = "1.4-2017";
+static const char * const thisSketchVersion = "2.0-2017";
+
+static unsigned long def_read_period_ms = 1000;               // read the teleinfo trames every sec.
+static unsigned long def_max_frequency_ms = 30000;            // send changes to the controller at most every 30 sec.
+static unsigned long def_unchanged_timeout_ms = 86400000;     // send all "stable" data once every day
+
+static sEeprom st_eeprom;
+static pwiTimer st_main_timer;
+static pwiTimer st_changed_timer;
+static pwiTimer st_unchanged_timer;
+
+enum {
+    CHILD_MAINTIMER = 70,                                     // teleinfo child id's are in 0..60
+    CHILD_CHANGEDTIMER,
+    CHILD_UNCHANGEDTIMER,
+};
 
 // Please note that activating MySensors DEBUG flag (below) may prevent
 // the Teleinfo to get rightly its informations (but why ??)
@@ -43,6 +62,8 @@ static const char * const thisSketchVersion = "1.4-2017";
 #define MY_TRANSPORT_UPLINK_CHECK_DISABLED
 #endif // HAVE_NRF24_RADIO
 #include <MySensors.h>
+
+MyMessage msg;
 
 /* **************************************************************************************
  * MySensors gateway
@@ -65,21 +86,10 @@ void presentation_my_sensors()
 #ifdef HAVE_TELEINFO
 #include "teleInfo.h"
 
-#include <Time.h>
-uint8_t thisday = 0;
-
 #define CHILD_ID_ADCO       0
-MyMessage msgVAR1( 0, V_VAR1 );
-
 #define CHILD_ID_OPTARIF    1
-MyMessage msgVAR2( 0, V_VAR2 );
-
 #define CHILD_ID_ISOUSC     2
-MyMessage msgCURRENT( 0, V_CURRENT );
-
 #define CHILD_ID_PTEC       3
-MyMessage msgVAR3( 0, V_VAR3 );
-
 #define CHILD_ID_IINST      4
 #define CHILD_ID_ADPS       5
 #define CHILD_ID_IMAX       6
@@ -105,14 +115,9 @@ MyMessage msgVAR3( 0, V_VAR3 );
 #define CHILD_ID_BBR_HC_JR  44
 #define CHILD_ID_BBR_HP_JR  45
 #define CHILD_ID_DEMAIN     46
-MyMessage msgVAR5( 0, V_VAR5 );
 
 // used by HCHP/EJP/BBR
 #define CHILD_ID_HHPHC      50
-MyMessage msgVAR4( 0, V_VAR4 );
-
-MyMessage msgWATT( 0, V_WATT );       // actually VA
-MyMessage msgKWH( 0, V_KWH );         // actually WH
 
 // send the full string as 'label=value'
 #define CHILD_ID_THREAD     60
@@ -125,7 +130,7 @@ MyMessage msgKWH( 0, V_KWH );         // actually WH
 teleInfo TI( 4, 5, 6, 7 );
 
 uint8_t tarif = 0;
-teleInfo_t last;                // last sent teleinfo datas
+teleInfo_t lastTI;              // last sent teleinfo datas
 teleInfo_t currentTI;           // last received teleinfo datas
 
 static const char * const ti_teleInfo = "[teleInfo] ";
@@ -136,92 +141,76 @@ static const char * const ti_to       = " to ";
  * Compare 2 valeurs
  * Si il y a eu un changement, le sauvegarde et l'envoie à la gateway
  */
-void compareTI( const char *label, uint32_t value, uint32_t &last, MyMessage &msg, int SENSOR_ID, uint8_t *plast = NULL )
+void compareTI( const char *label, uint32_t value, uint32_t &last, uint8_t msgType, int SENSOR_ID )
 {
     if( 0 ){
         Serial.print( "(uint32_t) label=" ); Serial.println( label );
     }
-    if( last == value ){
-        if( !plast || *plast == thisday ) return;
-    }
+    if( last == value ) return;
 #ifdef DEBUG_ENABLED
     Serial.print( ti_teleInfo ); Serial.print( label );
     Serial.print( ti_changed );  Serial.print( last );
     Serial.print( ti_to );       Serial.println( value );
 #endif
-    if( plast ){
-        *plast = thisday;
-    }
     last = value;
 #ifdef HAVE_NRF24_RADIO
-    send( msg.setSensor( SENSOR_ID ).set( last ));
+    msg.clear();
+    send( msg.setSensor( SENSOR_ID ).setType( msgType ).set( last ));
 #endif
 }
 
-void compareTI( const char *label, uint8_t value, uint8_t &last, MyMessage &msg, int SENSOR_ID, uint8_t *plast = NULL )
+void compareTI( const char *label, uint8_t value, uint8_t &last, uint8_t msgType, int SENSOR_ID )
 {
     if( 0 ){
         Serial.print( "(uint8_t) label=" ); Serial.println( label );
     }
-    if( last == value ){
-        if( !plast || *plast == thisday ) return;
-    }
+    if( last == value ) return;
 #ifdef DEBUG_ENABLED
     Serial.print( ti_teleInfo ); Serial.print( label );
     Serial.print( ti_changed );  Serial.print( last );
     Serial.print( ti_to );       Serial.println( value );
 #endif
-    if( plast ){
-        *plast = thisday;
-    }
     last = value;
 #ifdef HAVE_NRF24_RADIO
-    send( msg.setSensor( SENSOR_ID ).set( last ) );
+    msg.clear();
+    send( msg.setSensor( SENSOR_ID ).setType( msgType ).set( last ) );
 #endif
 }
 
-void compareTI( const char *label, char value, char &last, MyMessage &msg, int SENSOR_ID, uint8_t *plast = NULL )
+void compareTI( const char *label, char value, char &last, uint8_t msgType, int SENSOR_ID )
 {
     if( 0 ){
         Serial.print( "(char &) label=" ); Serial.println( label );
     }
-    if( last == value ){
-        if( !plast || *plast == thisday ) return;
-    }
+    if( last == value ) return;
 #ifdef DEBUG_ENABLED
     Serial.print( ti_teleInfo ); Serial.print( label );
     Serial.print( ti_changed );  Serial.print( last );
     Serial.print( ti_to );       Serial.println( value );
 #endif
-    if( plast ){
-        *plast = thisday;
-    }
     last = value;
 #ifdef HAVE_NRF24_RADIO
-    send( msg.setSensor( SENSOR_ID ).set( last ) );
+    msg.clear();
+    send( msg.setSensor( SENSOR_ID ).setType( msgType ).set( last ) );
 #endif
 }
 
-void compareTI( const char *label, char *value, char *last, MyMessage &msg, int SENSOR_ID, uint8_t *plast = NULL )
+void compareTI( const char *label, char *value, char *last, uint8_t msgType, int SENSOR_ID )
 {
     if( 0 ){
         Serial.print( "(char *) label=" ); Serial.println( label );
     }
-    if( strcmp( last, value ) == 0 ){
-        if( !plast || *plast == thisday ) return;
-    }
+    if( strcmp( last, value ) == 0 ) return;
 #ifdef DEBUG_ENABLED
     Serial.print( ti_teleInfo ); Serial.print( label );
     Serial.print( ti_changed );  Serial.print( last );
     Serial.print( ti_to );       Serial.println( value );
 #endif
-    if( plast ){
-        *plast = thisday;
-    }
     memset( last, 0, TI_BUFSIZE );
     strcpy( last, value );
 #ifdef HAVE_NRF24_RADIO
-    send( msg.setSensor( SENSOR_ID ).set( last ) );
+    msg.clear();
+    send( msg.setSensor( SENSOR_ID ).setType( msgType ).set( last ) );
 #endif
 }
 
@@ -243,7 +232,8 @@ void thread_cb( const char *label, const char *value )
             sprintf( str, "%s", label );
         }
 #ifdef HAVE_NRF24_RADIO
-        send( msgVAR1.setSensor( CHILD_ID_THREAD ).set( str ) );
+        msg.clear();
+        send( msg.setSensor( CHILD_ID_THREAD ).setType( V_VAR1 ).set( str ) );
 #endif
     }
 }
@@ -259,7 +249,7 @@ void presentation_teleinfo()
 #ifdef DEBUG_ENABLED
     Serial.println( thisfn );
 #endif
-    memset( &last, '\0', sizeof( teleInfo_t ));
+    memset( &lastTI, '\0', sizeof( teleInfo_t ));
     /* une première lecture va nous donner l'option tarifaire
      * on va s'en servir pour présenter uniquement les bons messages a la gateway
      * la première lecture peut être mauvaise: répéter jusqu'à avoir trouvé le tarif
@@ -302,15 +292,15 @@ void presentation_teleinfo()
     if( tarif > 0 ){
 #ifdef HAVE_NRF24_RADIO
         // communs a tout le monde
-        present( CHILD_ID_ADCO,    S_POWER );
-        present( CHILD_ID_OPTARIF, S_POWER );
-        present( CHILD_ID_ISOUSC,  S_POWER );
-        present( CHILD_ID_PTEC,    S_POWER );
-        present( CHILD_ID_IINST,   S_POWER );
-        present( CHILD_ID_ADPS,    S_POWER );
-        present( CHILD_ID_IMAX,    S_POWER );
-        present( CHILD_ID_PAPP,    S_POWER );
-        present( CHILD_ID_THREAD,  S_POWER );
+        present( CHILD_ID_ADCO,    S_POWER, "Identifiant du compteur" );
+        present( CHILD_ID_OPTARIF, S_POWER, "Option tarifaire du contrat" );
+        present( CHILD_ID_ISOUSC,  S_POWER, "Intensité souscrite" );
+        present( CHILD_ID_PTEC,    S_POWER, "Option tarifaire courante" );
+        present( CHILD_ID_IINST,   S_POWER, "Intensité instantanée" );
+        present( CHILD_ID_ADPS,    S_POWER, "Alerte de dépassement de consommation" );
+        present( CHILD_ID_IMAX,    S_POWER, "Intensité maxi consommée" );
+        present( CHILD_ID_PAPP,    S_POWER, "Puissance apparente courante" );
+        present( CHILD_ID_THREAD,  S_POWER, "Thread copy" );
 
         switch( tarif ){
             case TI_TARIF_BASE:
@@ -343,59 +333,76 @@ void presentation_teleinfo()
     }
 }
 
-
 // receive_teleinfo() is expected to return true if it has consumed the message
-// we accept commands:
-// - to child_sensor_id, with command, with type, with payload   <var>                                   <value>
-//   CHILD_ID_ADCO       set (1),      V_VAR1     <var>=<value>  hTC for honorThreadCb (case sensitive)  "1"|"0"
-//   <all_sensors>       req (2),      V_VAR1     <var>
-bool receive_teleinfo( const MyMessage &msg )
+//
+bool receive_teleinfo( const MyMessage &message )
 {
+    char payload[2*MAX_PAYLOAD+1];
+    uint8_t cmd = message.getCommand();
+    uint8_t req;
+    unsigned long ulong;
+
+    switch( cmd ){
+        case C_SET:
+            if( message.type == V_CUSTOM ){
+                memset( payload, '\0', sizeof( payload ));
+                message.getString( payload );
+                req = strlen( payload ) > 0 ? atoi( payload ) : 0;
+                switch( message.sensor ){
+                    case CHILD_ID_ADCO:
+                        switch( req ){
+                            case 1:
+                                eeprom_reset( st_eeprom );
+                                return( true );
+                        }
+                        break;
+                    case CHILD_ID_THREAD:
+                        TI.set_honor_thread_cb( req > 0 );
+                        return( true );
+                }
+            }
+            break;
+        case C_REQ:
+            msg.clear();
 #ifdef HAVE_NRF24_RADIO
-    if( msg.sensor == CHILD_ID_ADCO && mGetCommand( msg ) == C_SET ){
-        TI.set_from_str( msg.getString());
-        return( true );
-    }
-    if( mGetCommand( msg ) == C_REQ ){
-        if( msg.sensor == CHILD_ID_ADCO ){
-            send( msgVAR1.setSensor( msg.sensor ).set( last.ADCO ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_OPTARIF ){
-            send( msgVAR2.setSensor( msg.sensor ).set( last.OPTARIF ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_ISOUSC ){
-            send( msgCURRENT.setSensor( msg.sensor ).set( last.ISOUSC ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_OPTARIF ){
-            send( msgVAR2.setSensor( msg.sensor ).set( last.OPTARIF ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_PTEC ){
-            send( msgVAR2.setSensor( msg.sensor ).set( last.PTEC ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_IINST ){
-            send( msgCURRENT.setSensor( msg.sensor ).set( last.IINST ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_ADPS ){
-            send( msgCURRENT.setSensor( msg.sensor ).set( last.ADPS ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_IMAX ){
-            send( msgCURRENT.setSensor( msg.sensor ).set( last.IMAX ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_PAPP ){
-            send( msgWATT.setSensor( msg.sensor ).set( last.PAPP ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_HC_HC ){
-            send( msgKWH.setSensor( msg.sensor ).set( last.HC_HC ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_HC_HP ){
-            send( msgKWH.setSensor( msg.sensor ).set( last.HC_HP ));
-            return( true );
-        } else if( msg.sensor == CHILD_ID_HHPHC ){
-            send( msgVAR4.setSensor( msg.sensor ).set( last.HHPHC ));
-            return( true );
-        }
-    }
+            if( message.sensor == CHILD_ID_ADCO ){
+                send( msg.setSensor( message.sensor ).setType( V_VAR1 ).set( lastTI.ADCO ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_OPTARIF ){
+                send( msg.setSensor( message.sensor ).setType( V_VAR1 ).set( lastTI.OPTARIF ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_ISOUSC ){
+                send( msg.setSensor( message.sensor ).setType( V_CURRENT ).set( lastTI.ISOUSC ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_PTEC ){
+                send( msg.setSensor( message.sensor ).setType( V_VAR1 ).set( lastTI.PTEC ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_IINST ){
+                send( msg.setSensor( message.sensor ).setType( V_CURRENT ).set( lastTI.IINST ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_ADPS ){
+                send( msg.setSensor( message.sensor ).setType( V_CURRENT ).set( lastTI.ADPS ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_IMAX ){
+                send( msg.setSensor( message.sensor ).setType( V_CURRENT ).set( lastTI.IMAX ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_PAPP ){
+                send( msg.setSensor( message.sensor ).setType( V_WATT ).set( lastTI.PAPP ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_HC_HC ){
+                send( msg.setSensor( message.sensor ).setType( V_KWH ).set( lastTI.h.cp.HC_HC ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_HC_HP ){
+                send( msg.setSensor( message.sensor ).setType( V_KWH ).set( lastTI.h.cp.HC_HP ));
+                return( true );
+            } else if( message.sensor == CHILD_ID_HHPHC ){
+                send( msg.setSensor( message.sensor ).setType( V_VAR1 ).set( lastTI.h.HHPHC ));
+                return( true );
+            }
 #endif // HAVE_NRF24_RADIO
+            break;
+    }
+
     return( false );
 }
 #endif // HAVE_TELEINFO
@@ -412,6 +419,11 @@ void presentation()
 #ifdef HAVE_TELEINFO
     presentation_teleinfo();
 #endif
+#ifdef HAVE_NRF24_RADIO
+    present( CHILD_MAINTIMER,      S_CUSTOM, "MainTimer" );
+    present( CHILD_CHANGEDTIMER,   S_CUSTOM, "MaxFrequencyTimer" );
+    present( CHILD_UNCHANGEDTIMER, S_CUSTOM, "UnchangedTimer" );
+#endif
 }
 
 void setup()  
@@ -420,71 +432,254 @@ void setup()
     Serial.begin( 115200 );
     Serial.println( F( "[setup]" ));
 #endif
+    eeprom_read( st_eeprom );
+    st_main_timer.start( "MainTimer", st_eeprom.read_period_ms, false, onMainTimerCb, NULL, false );
+    st_changed_timer.start( "MaxFrequencyTimer", st_eeprom.max_frequency_ms, false, onChangedTimerCb );
+    st_unchanged_timer.start( "UnchangedTimer", st_eeprom.unchanged_timeout_ms, false, onUnchangedTimerCb );
+    
+    send_var( CHILD_MAINTIMER, st_eeprom.read_period_ms );
+    send_var( CHILD_CHANGEDTIMER, st_eeprom.max_frequency_ms );
+    send_var( CHILD_UNCHANGEDTIMER, st_eeprom.unchanged_timeout_ms );
 }
 
 void loop()
 {
+    pwiTimer::Loop();
+}
+
+/*
+ * This callback is set from the 'read_period_ms':
+ *  just read the next trame, pulsing the LED accordingly, storing the datas
+ */
+void onMainTimerCb( void *empty )
+{
 #ifdef DEBUG_ENABLED
-    Serial.println( F( "[loop]" ));
+    Serial.println( F( "[onMainTimerCb]" ));
 #endif
 #ifdef HAVE_TELEINFO
-    time_t t = now();
-    thisday = day( t );
-#ifdef DEBUG_ENABLED
-    Serial.print( F( "[loop] thisday=" )); Serial.println( thisday );
+    if( tarif > 0 ){
+        TI.get( &currentTI );
+    }
 #endif
-    /* Read customer tele-information
-     *  only sending modified data to the gateway
-     */
-    if( tarif > 0 && TI.get( &currentTI )){
-        compareTI( TI_ADCO,    currentTI.ADCO,      last.ADCO,      msgVAR1,    CHILD_ID_ADCO,     &last.last_adco );     // char *
-        compareTI( TI_OPTARIF, currentTI.OPTARIF,   last.OPTARIF,   msgVAR2,    CHILD_ID_OPTARIF,  &last.last_optarif );  // char *
-        compareTI( TI_ISOUSC,  currentTI.ISOUSC,    last.ISOUSC,    msgCURRENT, CHILD_ID_ISOUSC,   &last.last_isousc );   // uint8_t
-        compareTI( TI_PTEC,    currentTI.PTEC,      last.PTEC,      msgVAR3,    CHILD_ID_PTEC );
-        compareTI( TI_IINST,   currentTI.IINST,     last.IINST,     msgCURRENT, CHILD_ID_IINST );
-        compareTI( TI_ADPS,    currentTI.ADPS,      last.ADPS,      msgCURRENT, CHILD_ID_ADPS );
-        compareTI( TI_IMAX,    currentTI.IMAX,      last.IMAX,      msgCURRENT, CHILD_ID_IMAX,     &last.last_imax );
-        compareTI( TI_PAPP,    currentTI.PAPP,      last.PAPP,      msgWATT,    CHILD_ID_PAPP );
+}
+
+/*
+ * This callback is set from the 'max_frequency_ms':
+ *  send the changed from last read 'currentTI' and last sent 'last'
+ */
+void onChangedTimerCb( void *empty )
+{
+#ifdef DEBUG_ENABLED
+    Serial.println( F( "[onChangedTimerCb]" ));
+#endif
+#ifdef HAVE_TELEINFO
+    if( tarif > 0 ){
+        compareTI( TI_ADCO,    currentTI.ADCO,      lastTI.ADCO,      V_VAR1,    CHILD_ID_ADCO );                       // char *
+        compareTI( TI_OPTARIF, currentTI.OPTARIF,   lastTI.OPTARIF,   V_VAR1,    CHILD_ID_OPTARIF );                    // char *
+        compareTI( TI_ISOUSC,  currentTI.ISOUSC,    lastTI.ISOUSC,    V_CURRENT, CHILD_ID_ISOUSC );                     // uint8_t
+        compareTI( TI_PTEC,    currentTI.PTEC,      lastTI.PTEC,      V_VAR1,    CHILD_ID_PTEC );
+        compareTI( TI_IINST,   currentTI.IINST,     lastTI.IINST,     V_CURRENT, CHILD_ID_IINST );
+        compareTI( TI_ADPS,    currentTI.ADPS,      lastTI.ADPS,      V_CURRENT, CHILD_ID_ADPS );
+        compareTI( TI_IMAX,    currentTI.IMAX,      lastTI.IMAX,      V_CURRENT, CHILD_ID_IMAX );
+        compareTI( TI_PAPP,    currentTI.PAPP,      lastTI.PAPP,      V_WATT,    CHILD_ID_PAPP );
         switch( tarif ){
             case TI_TARIF_BASE:
-                compareTI( TI_BASE,    currentTI.BASE,      last.BASE,      msgKWH,     CHILD_ID_BASE );
+                compareTI( TI_BASE,    currentTI.b.BASE,          lastTI.b.BASE,          V_KWH,     CHILD_ID_BASE );
                 break;
             case TI_TARIF_HCHP:
-                compareTI( TI_HCHC,    currentTI.HC_HC,     last.HC_HC,     msgKWH,     CHILD_ID_HC_HC );
-                compareTI( TI_HCHP,    currentTI.HC_HP,     last.HC_HP,     msgKWH,     CHILD_ID_HC_HP );
-                compareTI( TI_HHPHC,   currentTI.HHPHC,     last.HHPHC,     msgVAR4,    CHILD_ID_HHPHC,     &last.last_hhphc );   // char &
+                compareTI( TI_HHPHC,   currentTI.h.HHPHC,         lastTI.h.HHPHC,         V_VAR1,    CHILD_ID_HHPHC );  // char &
+                compareTI( TI_HCHC,    currentTI.h.cp.HC_HC,      lastTI.h.cp.HC_HC,      V_KWH,     CHILD_ID_HC_HC );
+                compareTI( TI_HCHP,    currentTI.h.cp.HC_HP,      lastTI.h.cp.HC_HP,      V_KWH,     CHILD_ID_HC_HP );
                 break;
             case TI_TARIF_EJP:
-                compareTI( TI_EJPHN,   currentTI.EJP_HN,    last.EJP_HN,    msgKWH,     CHILD_ID_EJP_HN );
-                compareTI( TI_EJPHPM,  currentTI.EJP_HPM,   last.EJP_HPM,   msgKWH,     CHILD_ID_EJP_HPM );
-                compareTI( TI_PEJP,    currentTI.PEJP,      last.PEJP,      msgKWH,     CHILD_ID_PEJP );
-                compareTI( TI_HHPHC,   currentTI.HHPHC,     last.HHPHC,     msgVAR4,    CHILD_ID_HHPHC );
+                compareTI( TI_HHPHC,   currentTI.h.HHPHC,         lastTI.h.HHPHC,         V_VAR1,    CHILD_ID_HHPHC );
+                compareTI( TI_EJPHN,   currentTI.h.ejp.EJP_HN,    lastTI.h.ejp.EJP_HN,    V_KWH,     CHILD_ID_EJP_HN );
+                compareTI( TI_EJPHPM,  currentTI.h.ejp.EJP_HPM,   lastTI.h.ejp.EJP_HPM,   V_KWH,     CHILD_ID_EJP_HPM );
+                compareTI( TI_PEJP,    currentTI.h.ejp.PEJP,      lastTI.h.ejp.PEJP,      V_KWH,     CHILD_ID_PEJP );
                 break;
             case TI_TARIF_TEMPO:
-                compareTI( TI_BBRHCJB, currentTI.BBR_HC_JB, last.BBR_HC_JB, msgKWH,     CHILD_ID_BBR_HC_JB );
-                compareTI( TI_BBRHPJB, currentTI.BBR_HP_JB, last.BBR_HP_JB, msgKWH,     CHILD_ID_BBR_HP_JB );
-                compareTI( TI_BBRHCJW, currentTI.BBR_HC_JW, last.BBR_HC_JW, msgKWH,     CHILD_ID_BBR_HC_JW );
-                compareTI( TI_BBRHPJW, currentTI.BBR_HP_JW, last.BBR_HP_JW, msgKWH,     CHILD_ID_BBR_HP_JW );
-                compareTI( TI_BBRHCJR, currentTI.BBR_HC_JR, last.BBR_HC_JR, msgKWH,     CHILD_ID_BBR_HC_JR );
-                compareTI( TI_BBRHPJR, currentTI.BBR_HP_JR, last.BBR_HP_JR, msgKWH,     CHILD_ID_BBR_HP_JR );
-                compareTI( TI_DEMAIN,  currentTI.DEMAIN,    last.DEMAIN,    msgVAR5,    CHILD_ID_DEMAIN );
-                compareTI( TI_HHPHC,   currentTI.HHPHC,     last.HHPHC,     msgVAR4,    CHILD_ID_HHPHC );
+                compareTI( TI_HHPHC,   currentTI.h.HHPHC,         lastTI.h.HHPHC,         V_VAR1,    CHILD_ID_HHPHC );
+                compareTI( TI_BBRHCJB, currentTI.h.bbr.BBR_HC_JB, lastTI.h.bbr.BBR_HC_JB, V_KWH,     CHILD_ID_BBR_HC_JB );
+                compareTI( TI_BBRHPJB, currentTI.h.bbr.BBR_HP_JB, lastTI.h.bbr.BBR_HP_JB, V_KWH,     CHILD_ID_BBR_HP_JB );
+                compareTI( TI_BBRHCJW, currentTI.h.bbr.BBR_HC_JW, lastTI.h.bbr.BBR_HC_JW, V_KWH,     CHILD_ID_BBR_HC_JW );
+                compareTI( TI_BBRHPJW, currentTI.h.bbr.BBR_HP_JW, lastTI.h.bbr.BBR_HP_JW, V_KWH,     CHILD_ID_BBR_HP_JW );
+                compareTI( TI_BBRHCJR, currentTI.h.bbr.BBR_HC_JR, lastTI.h.bbr.BBR_HC_JR, V_KWH,     CHILD_ID_BBR_HC_JR );
+                compareTI( TI_BBRHPJR, currentTI.h.bbr.BBR_HP_JR, lastTI.h.bbr.BBR_HP_JR, V_KWH,     CHILD_ID_BBR_HP_JR );
+                compareTI( TI_DEMAIN,  currentTI.h.bbr.DEMAIN,    lastTI.h.bbr.DEMAIN,    V_VAR1,    CHILD_ID_DEMAIN );
                 break;
         }
     }
 #endif
-    wait( 500 );
+}
+
+/*
+ * This callback is set from the 'unchanged_timeout_ms'
+ * Send to the controller all data
+ */
+void onUnchangedTimerCb( void *empty )
+{
+    msg.clear();
+    send( msg.setSensor( CHILD_ID_ADCO ).setType( V_VAR1 ).set( lastTI.ADCO ));
+    msg.clear();
+    send( msg.setSensor( CHILD_ID_OPTARIF ).setType( V_VAR1 ).set( lastTI.OPTARIF ));
+    msg.clear();
+    send( msg.setSensor( CHILD_ID_ISOUSC ).setType( V_CURRENT ).set( lastTI.ISOUSC ));
+    msg.clear();
+    send( msg.setSensor( CHILD_ID_PTEC ).setType( V_VAR1 ).set( lastTI.PTEC ));
+    msg.clear();
+    send( msg.setSensor( CHILD_ID_ADPS ).setType( V_CURRENT ).set( lastTI.ADPS ));
+    msg.clear();
+    send( msg.setSensor( CHILD_ID_IMAX ).setType( V_CURRENT ).set( lastTI.IMAX ));
+    msg.clear();
+    send( msg.setSensor( CHILD_ID_HHPHC ).setType( V_VAR1 ).set( lastTI.h.HHPHC ));
 }
 
 /*
  * Accepting from the gateway commands or request targeting the teleinfo
  */
-void receive( const MyMessage &msg )
+void receive( const MyMessage &message )
 {
 #ifdef HAVE_TELEINFO
-    // receive_teleinfo() is expected to return true if it has consumed the message
-    if( receive_teleinfo( msg ))
+    if( receive_teleinfo( message )){
         return;
+    }
 #endif // HAVE_TELEINFO
+    receive_others( message );
+}
+
+void receive_others( const MyMessage &message )
+{
+    char payload[2*MAX_PAYLOAD+1];
+    uint8_t cmd = message.getCommand();
+    uint8_t req;
+    unsigned long ulong;
+
+    if( cmd == C_SET && message.type == V_CUSTOM ){
+        memset( payload, '\0', sizeof( payload ));
+        message.getString( payload );
+        req = strlen( payload ) > 0 ? atoi( payload ) : 0;
+        switch( message.sensor ){
+            case CHILD_MAINTIMER:
+                switch( req ){
+                    case 1:
+                        ulong = strlen( payload ) > 2 ? atol( payload+2 ) : 0;
+                        if( ulong > 0 ){
+                            st_eeprom.read_period_ms = ulong;
+                            eeprom_write( st_eeprom );
+                            st_main_timer.setDelay( ulong );
+                        }
+                        break;
+                }
+                break;
+            case CHILD_CHANGEDTIMER:
+                switch( req ){
+                    case 1:
+                        ulong = strlen( payload ) > 2 ? atol( payload+2 ) : 0;
+                        if( ulong > 0 ){
+                            st_eeprom.max_frequency_ms = ulong;
+                            eeprom_write( st_eeprom );
+                            st_changed_timer.setDelay( ulong );
+                        }
+                        break;
+                }
+                break;
+            case CHILD_UNCHANGEDTIMER:
+                switch( req ){
+                    case 1:
+                        ulong = strlen( payload ) > 2 ? atol( payload+2 ) : 0;
+                        if( ulong > 0 ){
+                            st_eeprom.unchanged_timeout_ms = ulong;
+                            eeprom_write( st_eeprom );
+                            st_unchanged_timer.setDelay( ulong );
+                        }
+                        break;
+                }
+                break;
+        }
+    } else if( cmd == C_REQ ){
+        switch( message.sensor ){
+            case CHILD_MAINTIMER:
+                send_var( msg.sensor, st_eeprom.read_period_ms );
+                break;
+            case CHILD_CHANGEDTIMER:
+                send_var( msg.sensor, st_eeprom.max_frequency_ms );
+                break;
+            case CHILD_UNCHANGEDTIMER:
+                send_var( msg.sensor, st_eeprom.unchanged_timeout_ms );
+                break;
+        }
+    }
+}
+
+void send_var( uint8_t child_id, unsigned long delay_ms )
+{
+    msg.clear();
+    send( msg.setSensor( child_id ).setType( V_VAR1 ).set( delay_ms ));
+}
+
+/**
+ * eeprom_read:
+ * @sdata: the sEeprom data structure to be filled.
+ *
+ * Read the data from the EEPROM.
+ */
+void eeprom_read( sEeprom &sdata )
+{
+#ifdef DEBUG_ENABLED
+    Serial.println( F( "[eeprom_read]" ));
+#endif
+    memset( &sdata, '\0', sizeof( sdata ));
+    uint16_t i;
+    for( i=0 ; i<sizeof( sdata ); ++i ){
+        (( uint8_t * ) &sdata )[i] = loadState(( uint8_t ) i );
+    }
+    // initialize with default values if mark not found
+    if( sdata.mark[0] != 'P' || sdata.mark[1] != 'W' || sdata.mark[2] != 'I' || sdata.mark[3] != 0 ){
+        eeprom_reset( sdata );
+    } else {
+        eeprom_dump( sdata );
+    }
+}
+
+/**
+ * eeprom_reset:
+ *
+ * RAZ the user data of the EEPROM, resetting it to default values.
+ */
+void eeprom_reset( sEeprom &sdata )
+{
+#ifdef DEBUG_ENABLED
+    Serial.print( F( "[eeprom_reset] begin=" )); Serial.println( millis());
+#endif
+    for( int i=0 ; i<256 ; ++i ){
+        saveState(( uint8_t ) i, 0 );
+    }
+#ifdef DEBUG_ENABLED
+    Serial.print( F( "[eeprom_reset] end=" )); Serial.println( millis());
+#endif
+    memset( &sdata, '\0', sizeof( sdata ));
+    strcpy( sdata.mark, "PWI" );
+    sdata.read_period_ms = def_read_period_ms;
+    sdata.max_frequency_ms = def_max_frequency_ms;
+    sdata.unchanged_timeout_ms = def_unchanged_timeout_ms;
+    eeprom_write( sdata );
+}
+
+/**
+ * eeprom_write:
+ * @sdata: the sEeprom data structure to be written.
+ *
+ * Write the data to the EEPROM.
+ */
+void eeprom_write( sEeprom &sdata )
+{
+#ifdef EEPROM_DEBUG
+    Serial.println( F( "[eeprom_write]" ));
+#endif
+    uint16_t i;
+    for( i=0 ; i<sizeof( sdata ) ; ++i ){
+        saveState( i, (( uint8_t * ) &sdata )[i] );
+    }
+    eeprom_dump( sdata );
 }
 
