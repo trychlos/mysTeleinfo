@@ -1,17 +1,78 @@
-#include "Arduino.h"
 #include "eeprom.h"
+#include <untilNow.h>
+
+/* **************************************************************************************
+ *  EEPROM management
+ *  
+ * pwi 2019- 6- 1 v1 creation
+ */
+
+// uncomment for debugging eeprom functions
+#define EEPROM_DEBUG
 
 /**
- * eeprom_dump:
- * @sdata: the sEeprom data structure to be dumped.
- *
- * Dump the sEeprom struct content.
+ * eepromDump:
  */
-void eeprom_dump( sEeprom &sdata )
+void eepromDump( sEeprom &data )
 {
-    Serial.print( F( "[eeprom_dump] mark='" )); Serial.print( sdata.mark ); Serial.println( "'" );
-    Serial.print( F( "[eeprom_dump] read_period=" )); Serial.print( sdata.read_period_ms ); Serial.println( "ms" );
-    Serial.print( F( "[eeprom_dump] max_frequency=" )); Serial.print( sdata.max_frequency_ms ); Serial.println( "ms" );
-    Serial.print( F( "[eeprom_dump] unchanged_timeout=" )); Serial.print( sdata.unchanged_timeout_ms ); Serial.println( "ms" );
+#ifdef EEPROM_DEBUG
+    Serial.print( F( "[eepromDump] mark='" ));         Serial.print( data.mark ); Serial.println( F( "'" ));
+    Serial.print( F( "[eepromDump] version=" ));       Serial.println( data.version );
+    Serial.print( F( "[eepromDump] min_period_ms=" )); Serial.println( data.min_period_ms );
+    Serial.print( F( "[eepromDump] max_period_ms=" )); Serial.println( data.max_period_ms );
+    Serial.print( F( "[eepromDump] dup_thread=" ));    Serial.println( data.dup_thread ? "True" : "False" );
+    Serial.print( F( "[eepromDump] auto_dump_ms=" ));  Serial.println( data.auto_dump_ms );
+    Serial.print( F( "[eepromDump] read_ms=" ));       Serial.println( data.read_ms );
+#endif
+}
+
+/**
+ * eepromRead:
+ */
+void eepromRead( sEeprom &data, pEepromRead pfnRead, pEepromWrite pfnWrite )
+{
+    for( uint8_t i=0 ; i<sizeof( sEeprom ); ++i ){
+        (( uint8_t * ) &data )[i] = pfnRead( i );
+    }
+    // initialize with default values if mark not found
+    if( data.mark[0] != 'P' || data.mark[1] != 'W' || data.mark[2] != 'I' || data.mark[3] != 0 ){
+        eepromReset( data, pfnWrite );
+    }
+}
+
+/**
+ * eepromReset:
+ */
+void eepromReset( sEeprom &data, pEepromWrite pfnWrite )
+{
+    unsigned long def_max_frequency_timeout = 120000;        // 2 mn
+    unsigned long def_unchanged_timeout = 3600000;           // 1 h
+#ifdef EEPROM_DEBUG
+    Serial.println( F( "[eepromReset]" ));
+#endif
+    memset( &data, '\0', sizeof( sEeprom ));
+    strcpy( data.mark, "PWI" );
+    data.version = EEPROM_VERSION;
+  
+    data.min_period_ms = 60000;     // 1mn
+    data.max_period_ms = 3600000;   // 1h
+    data.dup_thread = false;
+    data.auto_dump_ms = 86400000;   // 24h
+    data.read_ms = 1000;
+  
+    eepromWrite( data, pfnWrite );
+}
+
+/**
+ * eepromWrite:
+ */
+void eepromWrite( sEeprom &data, pEepromWrite pfnWrite )
+{
+#ifdef EEPROM_DEBUG
+    Serial.println( F( "[eepromWrite]" ));
+#endif
+    for( uint8_t i=0 ; i<sizeof( sEeprom ); ++i ){
+        pfnWrite( i, (( uint8_t * ) &data )[i] );
+    }
 }
 

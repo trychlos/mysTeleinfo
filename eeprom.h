@@ -1,34 +1,38 @@
-#ifndef __TELEINFO_EEPROM_H__
-#define __TELEINFO_EEPROM_H__
+#ifndef __EEPROM_H__
+#define __EEPROM_H__
 
-/*
- * MySensors let 256  bytes usable
+#include <Arduino.h>
+
+/* **************************************************************************************
+ *  EEPROM description
+ *  This is the data structure saved in the EEPROM.
  * 
- * pos  type           size  content
- * ---  -------------  ----  ------------------------------
- *   0  char              4  mark
- *   4  unsigned long     4  read period (ms)
- *   8  unsigned long     4  send max frequency (ms)
- *  12  unsigned long     4  unchanged timeout (ms)
- *  16
- *  
- * Please note that this EEPROM code must be written in main .ino program
- * in order to take advantage of the MySensors library (which does not want
- * to be compiled from other source files).
+ *  MySensors leave us with 256 bytes to save configuration data in the EEPROM.
+ * 
+ * pwi 2019- 6- 1 v1 creation
  */
+#define EEPROM_VERSION    2
+
+typedef uint8_t pEepromRead( uint8_t );
+typedef void    pEepromWrite( uint8_t, uint8_t );
 
 typedef struct {
-    char mark[4];
-    unsigned long read_period_ms;
-    unsigned long max_frequency_ms;
-    unsigned long unchanged_timeout_ms;
+    /* a 'PWI' null-terminated string which marks the structure as initialized */
+    char          mark[4];
+    uint8_t       version;
+    /* communication */
+    unsigned long min_period_ms;
+    unsigned long max_period_ms;
+    bool          dup_thread;
+    unsigned long auto_dump_ms;
+    unsigned long read_ms;
 }
   sEeprom;
 
-void eeprom_dump( sEeprom &sdata );
-void eeprom_read( sEeprom &sdata );
-void eeprom_reset( sEeprom &sdata );
-void eeprom_write( sEeprom &sdata );
+void eepromDump( sEeprom &data );
+void eepromRead( sEeprom &data, pEepromRead pfnRead, pEepromWrite pfnWrite );
+void eepromReset( sEeprom &data, pEepromWrite pfn );
+void eepromWrite( sEeprom &data, pEepromWrite pfn );
 
-#endif // __TELEINFO_EEPROM_H__
+#endif // __EEPROM_H__
 
