@@ -3,8 +3,48 @@
  Summary
  =======
  
+   Version 3.0-2019
+   Version 2.0-2017
    Version 1.4-2017
    Version 1.0-2017
+
+-----------------------------------------------------------------------
+ Version 3.0-2019
+ ================
+
+ Released on 
+
+ New features and improvements:
+
+   - Adapt to Linky, standard mode
+
+ Bug fixes:
+
+   - Honor the duplicate thread request
+
+ Other changes:
+
+   - All ids are changed : main and management are first, teleinfo start at 100
+
+-----------------------------------------------------------------------
+ Version 2.0-2017
+ ================
+
+ Released on 2017-06-02
+
+ New features and improvements:
+
+   - 
+
+ Bug fixes:
+
+   - 
+
+ Other changes:
+
+   - Use pwiTimer class.
+   - Rename Kicad files.
+   - Review project files layout.
 
 -----------------------------------------------------------------------
  Version 1.4-2017

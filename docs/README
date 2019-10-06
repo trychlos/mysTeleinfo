@@ -1,0 +1,72 @@
+Table 2 - Information mode historique
+Format d'un groupe d’information du mode historique
+
+| < LF > |  Etiquette  | < SP > |  Donnée  | < SP > | Checksum | < CR > |
+| (0x0A) |             | (0x20) |          | (0x20) |          | (0x0D) |
+|        | Zone contrôlée par la checksum  |        |          |        |
+
+                                                                 +================+
+                                                                 |  TIC standard  |
+                                                                 +================+
+Format des trames
+Une trame est constituée de trois parties :
+- le caractère "Start TeXt" STX (0x02) indique le début de la trame,
+- le corps de la trame est composé de plusieurs groupes d'informations,
+- le caractère "End TeXt" ETX (0x03) indique la fin de la trame.
+
+Table 5 - Format de la trame
+
+| STX | Data set | Data set | .... | Data set | ETX |
+
+Les trames sont émises les unes après les autres en continu :
+- entre la fin d'une trame et le début de la suivante, un délai sans l'émission est ménagé. Sa durée est comprise entre 16,7 et 33,4 ms,
+- de même le délai entre 2 groupes d'information successifs d'une même trame ne doit pas être supérieur à 33,4 ms.
+
+Format des groupes d’information
+Un groupe d’information est composé de 7 parties ou 9 parties (cas avec horodate) décrites ci-dessous :
+- un caractère "Line Feed" LF (0x0 A) indiquant le début du groupe,
+- le champ étiquette dont la longueur est inférieure ou égale à huit caractères,
+- un caractère "Horizontal Tab" HT (0x09), séparateur du champ "étiquette" et du champ "donnée",
+- le champ "donnée" dont la longueur est variable,
+- un caractère "Horizontal Tab" HT (0x09), séparateur du champ "donnée" et du champ "checksum",
+- le champ "checksum" dont le calcul est donné ci-dessous,
+- un caractère "Carriage Return" CR (0x0 D) indiquant la fin du groupe d'information,
+
+La checksum est calculée sur l'ensemble des caractères allant du début du champ Etiquette à la fin du champ Donnée, caractères
+< HT > inclus.
+Le principe de calcul de la Checksum est le suivant :
+- calcul de la somme « S1 » de tous les caractères allant du début du champ « Etiquette » jusqu’au délimiteur (inclus) entre les
+champs « Donnée » et « Checksum ») ;
+- cette somme déduite est tronquée sur 6 bits (cette opération est faite à l’aide d’un ET logique avec 0x3F) ;
+- pour obtenir le résultat checksum, on additionne le résultat précédent S2 à 0x20.
+En résumé :
+	Checksum = (S1 & 0x3F) + 0x20
+Le résultat sera toujours un caractère ASCII imprimable compris entre 0x20 et 0x5F.
+
+Note 1 : le groupe d’information peut porter une horodate. Elle s’intercale alors entre le champ étiquette et le champ donnée avec
+un séparateur complémentaire "Horizontal Tab" HT (0x09).
+
+Note 2 : le caractère séparateur des champs "Horizontal Tab" HT (0x09), en mode standard est different du caractère séparateur
+"Space" SP (0x20) en mode historique. Cette disposition permet d’utiliser le caractère “Space” pour les données.
+
+Table 6 - Information systématiquement horodatée par le compteur
+Format d'un groupe contenant une donnée horodatée
+
+| < LF > |  Etiquette  | < HT > | Horodate | < HT > | Donnée | < HT > | Checksum | < CR > |
+| (0x0A) |             | (0x09) |          | (0x09) |        | (0x09) |          | (0x0D) |
+|        |                Zone contrôlée par la checksum              |          |        |
+|   \n   |                                                                       |   \r   |
+
+Table 7 - Information sans horodate
+Format d'un groupe contenant une donnée non horodatée
+
+| < LF > |  Etiquette  | < HT > | Donnée | < HT > | Checksum | < CR > |
+| (0x0A) |             | (0x09) |        | (0x09) |          | (0x0D) |
+|        |     Zone contrôlée par la checksum     |          |        |
+
+Buffer size
+===========
+La plus longue taille de donnée en TIC standard est utilisée par les étiquettes PJOURF+1 et PPOINTE à 98 characters.
+Ces étiquettes ne sont pas horodatées.
+En conséquence, le buffer maxi doit être de 8+1+98+1+1 = 109.
+
