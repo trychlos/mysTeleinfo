@@ -86,7 +86,9 @@ P1(PLy_ccasnm1)   = "CCASN-1";
 P1(PLy_prm)       = "PRM";
 P1(PLy_ntarf)     = "NTARF";
 
+P1(PLy_ngtf_HCHP) = "H PLEINE/CREUSE ";
 P1(PLy_ltarf_HP)  = "  HEURE  PLEINE ";
+P1(PLy_ltarf_HC)  = "  HEURE  CREUSE ";
 
 // Frequency of the trame LED (slow if OK, fast else)
 #define TRAMEOK_MS      3000
@@ -143,18 +145,6 @@ void Linky::init_led( uint8_t *dest, uint8_t pin )
         this->ledOff( pin );
         pinMode( pin, OUTPUT );
     }
-}
-
-/**
- * Linky::dump:
- * 
- * Dump all the data.
- *
- * Public.
- */
-void Linky::dump()
-{
-    this->send( true );
 }
 
 /**
@@ -248,6 +238,90 @@ void Linky::present()
 }
 
 /**
+ * Linky::send:
+ * 
+ * Unconditionally send the informations.
+ *
+ * Public.
+ */
+void Linky::send( bool all /*=false*/ )
+{
+    MyMessage msg;
+    uint8_t id = this->getId();
+    if( all || ( this->_DNFR & bLy_adsc )){
+        msg.clear();
+        ::send( msg.setSensor( id ).setType( V_VAR1 ).set( this->tic.adsc ));
+    }
+    if( all || ( this->_DNFR & bLy_date )){
+        msg.clear();
+        ::send( msg.setSensor( id+1 ).setType( V_VAR1 ).set( this->tic.date ));
+    }
+    if( all || ( this->_DNFR & bLy_ngtf )){
+        msg.clear();
+        ::send( msg.setSensor( id+2 ).setType( V_VAR1 ).set( this->tic.ngtf ));
+    }
+    if( all || ( this->_DNFR & bLy_ltarf )){
+        msg.clear();
+        ::send( msg.setSensor( id+3 ).setType( V_VAR1 ).set( this->tic.ltarf ));
+    }
+    if( all || ( this->_DNFR & bLy_easf01 )){
+        msg.clear();
+        ::send( msg.setSensor( id+4 ).setType( V_KWH ).set( this->tic.easf01 ));
+    }
+    if( all || ( this->_DNFR & bLy_easf02 )){
+        msg.clear();
+        ::send( msg.setSensor( id+5 ).setType( V_KWH ).set( this->tic.easf02 ));
+    }
+    if( all || ( this->_DNFR & bLy_irms1 )){
+        msg.clear();
+        ::send( msg.setSensor( id+6 ).setType( V_CURRENT ).set( this->tic.irms1 ));
+    }
+    if( all || ( this->_DNFR & bLy_urms1 )){
+        msg.clear();
+        ::send( msg.setSensor( id+7 ).setType( V_VOLTAGE ).set( this->tic.urms1 ));
+    }
+    if( all || ( this->_DNFR & bLy_pref )){
+        msg.clear();
+        ::send( msg.setSensor( id+8 ).setType( V_WATT ).set( this->tic.pref ));
+    }
+    if( all || ( this->_DNFR & bLy_sinsts )){
+        msg.clear();
+        ::send( msg.setSensor( id+9 ).setType( V_WATT ).set( this->tic.sinsts ));
+    }
+    /*
+    if( all || ( this->_DNFR & bLy_smaxsn )){
+        msg.clear();
+        ::send( msg.setSensor( id+10 ).setType( V_WATT ).set( this->tic.smaxsn ));
+    }
+    if( all || ( this->_DNFR & bLy_smaxsnm1 )){
+        msg.clear();
+        ::send( msg.setSensor( id+11 ).setType( V_WATT ).set( this->tic.smaxsnm1 ));
+    }
+    if( all || ( this->_DNFR & bLy_ccasn )){
+        msg.clear();
+        ::send( msg.setSensor( id+12 ).setType( V_WATT ).set( this->tic.ccasn ));
+    }
+    if( all || ( this->_DNFR & bLy_ccasnm1 )){
+        msg.clear();
+        ::send( msg.setSensor( id+13 ).setType( V_WATT ).set( this->tic.ccasnm1 ));
+    }
+    */
+    if( all || ( this->_DNFR & bLy_prm )){
+        msg.clear();
+        ::send( msg.setSensor( id+14 ).setType( V_VAR1 ).set( this->tic.prm ));
+    }
+    if( all || ( this->_DNFR & bLy_ntarf )){
+        msg.clear();
+        ::send( msg.setSensor( id+15 ).setType( V_VAR1 ).set( this->tic.ntarf ));
+    }
+    if( all || ( this->_DNFR & bLy_ltarf )){
+        msg.clear();
+        ::send( msg.setSensor( id+16 ).setType( V_VAR1 ).set( this->tic.hchp ));
+    }
+    this->_DNFR = 0;
+}
+
+/**
  * Linky::setDup:
  * @dup: whether the next trame should be duplicated.
  *
@@ -293,6 +367,32 @@ void Linky::setup( uint32_t min_period_ms, uint32_t max_period_ms )
 }
 
 /**
+ * Linky::checkHorodate:
+ * @p: the string to be checked.
+ * 
+ * Returns: %TRUE if the string is a valid date.
+ * 
+ * Cf. Enedis-NOI-CPT_54E.pdf § 6.2.1.1. Format des horodates.
+ *
+ * Private.
+ */
+bool Linky::checkHorodate( const char *p )
+{
+    if( strlen( p ) != 13 ){
+        return( false );
+    }
+    if( p[0]!='H' && p[0]!='h' && p[0]!='E' && p[0]!='e' ){
+        return( false );
+    }
+    for( uint8_t i=1 ; p[i] ; ++i ){
+        if( !isdigit( p[i] )){
+            return( false );
+        }
+    }
+    return( true );
+}
+
+/**
  * Linky::decData:
  * @dest: the tic_t destination member.
  * @mask: the corresponding bitmask of _DNFR.
@@ -306,33 +406,73 @@ void Linky::setup( uint32_t min_period_ms, uint32_t max_period_ms )
 bool Linky::decData( char *dest, uint32_t mask )
 {
     _pDec = strtok( NULL, CLy_Sep );
-    if( strcmp( _pDec, dest ) != 0 ){
-        strcpy( dest, _pDec );
-        SetBits( _DNFR, mask );
+    bool valid = true;
 
-        if( mask == bLy_ltarf ){
-            if( !strcmp_P( dest, PLy_ltarf_HP )){
-                this->ledOff( this->hcPin );
-                this->ledOn( this->hpPin );
-                this->tic.hchp = true;
-            } else {
-                this->ledOff( this->hpPin );
-                this->ledOn( this->hcPin );
-                this->tic.hchp = false;
+    // check data validity
+    // ADSC = only digits
+    if( mask == bLy_adsc ){
+        for( uint8_t i=0 ; _pDec[i] ; ++i ){
+            if( !isdigit( _pDec[i] )){
+                valid = false;
+                break;
+            }
+        }
+    } else if( mask == bLy_date ){
+        valid = this->checkHorodate( _pDec );
+
+    } else if( mask == bLy_ngtf ){
+        if( strcmp( _pDec, PLy_ngtf_HCHP ) != 0 ){
+            valid = false;
+        }
+
+    } else if( mask == bLy_prm ){
+        for( uint8_t i=0 ; _pDec[i] ; ++i ){
+            if( !isdigit( _pDec[i] )){
+                valid = false;
+                break;
             }
         }
     }
+
+    if( valid ){
+        if( strcmp( _pDec, dest ) != 0 ){
+            strcpy( dest, _pDec );
+            SetBits( _DNFR, mask );
+    
+            if( mask == bLy_ltarf ){
+                if( !strcmp_P( dest, PLy_ltarf_HP )){
+                    this->ledOff( this->hcPin );
+                    this->ledOn( this->hpPin );
+                    this->tic.hchp = true;
+                } else if( !strcmp_P( dest, PLy_ltarf_HC )){
+                    this->ledOff( this->hpPin );
+                    this->ledOn( this->hcPin );
+                    this->tic.hchp = false;
+                }
+            }
+        }
+    }
+
     return( _DNFR & mask );
 }
 
 bool Linky::decData( uint8_t *dest, uint32_t mask )
 {
     _pDec = strtok( NULL, CLy_Sep );
+    bool valid = true;
     uint8_t uint = ( uint8_t ) atoi( _pDec );
-    if( uint != *dest ){
-        *dest = uint;
-        SetBits( _DNFR, mask );
+
+    if( mask == bLy_pref ){
+        valid = ( uint != 0 && uint != 1 );    
     }
+
+    if( valid ){
+        if( uint != *dest ){
+            *dest = uint;
+            SetBits( _DNFR, mask );
+        }
+    }
+
     return( _DNFR & mask );
 }
 
@@ -349,25 +489,42 @@ bool Linky::decData( uint16_t *dest, uint32_t mask )
 
 bool Linky::decData( uint32_t *dest, uint32_t mask )
 {
+    bool valid = true;
     _pDec = strtok( NULL, CLy_Sep );
     uint16_t ulong = atol( _pDec );
-    if( ulong != *dest ){
-        *dest = ulong;
-        SetBits( _DNFR, mask );
+
+    if( mask == bLy_easf01 || mask == bLy_easf02 ){
+        if( ulong < *dest ){
+            valid = false;
+        }
     }
+
+    if( valid ){
+        if( ulong != *dest ){
+            *dest = ulong;
+            SetBits( _DNFR, mask );
+        }
+    }
+
     return( _DNFR & mask );
 }
 
 bool Linky::decData( horodate_t *dest, uint32_t mask )
 {
     _pDec = strtok( NULL, CLy_Sep );
-    if( strcmp( _pDec, dest->date ) != 0 ){
-        strncpy( dest->date, _pDec, LINKY_DATE_SIZE );
-        strtok( NULL, _pDec );
-        uint16_t ulong = atol( _pDec );
-        dest->value = ulong;
-        SetBits( _DNFR, mask );
+    char *pval = strtok( NULL, CLy_Sep );
+
+    bool valid = this->checkHorodate( _pDec );
+
+    if( valid ){
+        if( strcmp( _pDec, dest->date ) != 0 ){
+            strncpy( dest->date, _pDec, LINKY_DATE_SIZE );
+            uint16_t ulong = atol( pval );
+            dest->value = ulong;
+            SetBits( _DNFR, mask );
+        }
     }
+
     return( _DNFR & mask );
 }
 
@@ -375,16 +532,46 @@ bool Linky::decData( horodate_t *dest, uint32_t mask )
  * Linky::dupThread:
  * 
  * Duplicate the trames reception to the output thread is asked for.
+ * A buffer is built with trimmed label and values, '|'-separated.
  *
  * Private.
  */
 void Linky::dupThread()
 {
-    char buffer[26];              // MySensors max payload is 25 bytes
-    MyMessage msg;
     if( this->dup_thread ){
+
+        char buffer[1+MAX_PAYLOAD];   // MySensors max payload is 25 bytes
         memset( buffer, '\0', sizeof( buffer ));
-        strncpy( buffer, _pDec, sizeof( buffer )-1 );
+        uint8_t len = 0;
+    
+        // label
+        char *p = strtok( buffer, CLy_Sep );
+        String str = p;
+        str.trim();
+        strncpy( buffer, str.c_str(), MAX_PAYLOAD );
+        len = str.length();
+    
+        // horodate/value
+        p = strtok( NULL, CLy_Sep );
+        if( p[0] && len<MAX_PAYLOAD-1 ){
+            buffer[len] = '|';
+            len += 1;
+            str = p;
+            str.trim();
+            strncat( buffer, p, MAX_PAYLOAD-len );
+        }
+    
+        // value
+        p = strtok( NULL, CLy_Sep );
+        if( p[0] && len<MAX_PAYLOAD-1 ){
+            buffer[len] = '|';
+            len += 1;
+            str = p;
+            str.trim();
+            strncat( buffer, p, MAX_PAYLOAD-len );
+        }
+
+        MyMessage msg;
         msg.clear();
         ::send( msg.setSensor( 5 ).setType( V_VAR1 ).set( buffer ));
     }
@@ -630,90 +817,6 @@ void Linky::ig_receive()
 }
 
 /**
- * Linky::send:
- * 
- * Unconditionally send the informations.
- *
- * Private.
- */
-void Linky::send( bool all /*=false*/ )
-{
-    MyMessage msg;
-    uint8_t id = this->getId();
-    if( all || ( this->_DNFR & bLy_adsc )){
-        msg.clear();
-        ::send( msg.setSensor( id ).setType( V_VAR1 ).set( this->tic.adsc ));
-    }
-    if( all || ( this->_DNFR & bLy_date )){
-        msg.clear();
-        ::send( msg.setSensor( id+1 ).setType( V_VAR1 ).set( this->tic.date ));
-    }
-    if( all || ( this->_DNFR & bLy_ngtf )){
-        msg.clear();
-        ::send( msg.setSensor( id+2 ).setType( V_VAR1 ).set( this->tic.ngtf ));
-    }
-    if( all || ( this->_DNFR & bLy_ltarf )){
-        msg.clear();
-        ::send( msg.setSensor( id+3 ).setType( V_VAR1 ).set( this->tic.ltarf ));
-    }
-    if( all || ( this->_DNFR & bLy_easf01 )){
-        msg.clear();
-        ::send( msg.setSensor( id+4 ).setType( V_KWH ).set( this->tic.easf01 ));
-    }
-    if( all || ( this->_DNFR & bLy_easf02 )){
-        msg.clear();
-        ::send( msg.setSensor( id+5 ).setType( V_KWH ).set( this->tic.easf02 ));
-    }
-    if( all || ( this->_DNFR & bLy_irms1 )){
-        msg.clear();
-        ::send( msg.setSensor( id+6 ).setType( V_CURRENT ).set( this->tic.irms1 ));
-    }
-    if( all || ( this->_DNFR & bLy_urms1 )){
-        msg.clear();
-        ::send( msg.setSensor( id+7 ).setType( V_VOLTAGE ).set( this->tic.urms1 ));
-    }
-    if( all || ( this->_DNFR & bLy_pref )){
-        msg.clear();
-        ::send( msg.setSensor( id+8 ).setType( V_WATT ).set( this->tic.pref ));
-    }
-    if( all || ( this->_DNFR & bLy_sinsts )){
-        msg.clear();
-        ::send( msg.setSensor( id+9 ).setType( V_WATT ).set( this->tic.sinsts ));
-    }
-    /*
-    if( all || ( this->_DNFR & bLy_smaxsn )){
-        msg.clear();
-        ::send( msg.setSensor( id+10 ).setType( V_WATT ).set( this->tic.smaxsn ));
-    }
-    if( all || ( this->_DNFR & bLy_smaxsnm1 )){
-        msg.clear();
-        ::send( msg.setSensor( id+11 ).setType( V_WATT ).set( this->tic.smaxsnm1 ));
-    }
-    if( all || ( this->_DNFR & bLy_ccasn )){
-        msg.clear();
-        ::send( msg.setSensor( id+12 ).setType( V_WATT ).set( this->tic.ccasn ));
-    }
-    if( all || ( this->_DNFR & bLy_ccasnm1 )){
-        msg.clear();
-        ::send( msg.setSensor( id+13 ).setType( V_WATT ).set( this->tic.ccasnm1 ));
-    }
-    */
-    if( all || ( this->_DNFR & bLy_prm )){
-        msg.clear();
-        ::send( msg.setSensor( id+14 ).setType( V_VAR1 ).set( this->tic.prm ));
-    }
-    if( all || ( this->_DNFR & bLy_ntarf )){
-        msg.clear();
-        ::send( msg.setSensor( id+15 ).setType( V_VAR1 ).set( this->tic.ntarf ));
-    }
-    if( all || ( this->_DNFR & bLy_ltarf )){
-        msg.clear();
-        ::send( msg.setSensor( id+16 ).setType( V_VAR1 ).set( this->tic.hchp ));
-    }
-    this->_DNFR = 0;
-}
-
-/**
  * Linky::trameLedSet:
  * @period_ms: blinking period of the trame LED:
  *  3 sec. if OK
@@ -747,7 +850,6 @@ void Linky::trameLedSet( uint32_t period_ms )
 
         this->led_status_timer.setDelay( period_ms );
         this->led_status_timer.restart();
-        Linky::TrameLedStatusCb( this );
     }
 
     if( period_ms == TRAMEOK_MS ){

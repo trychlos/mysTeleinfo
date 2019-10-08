@@ -1,5 +1,4 @@
 #include "eeprom.h"
-#include <untilNow.h>
 
 /* **************************************************************************************
  *  EEPROM management
@@ -9,6 +8,8 @@
 
 // uncomment for debugging eeprom functions
 #define EEPROM_DEBUG
+
+static const char pwiLabel[] PROGMEM = "PWI";
 
 /**
  * eepromDump:
@@ -22,7 +23,7 @@ void eepromDump( sEeprom &data )
     Serial.print( F( "[eepromDump] max_period_ms=" )); Serial.println( data.max_period_ms );
     Serial.print( F( "[eepromDump] dup_thread=" ));    Serial.println( data.dup_thread ? "True" : "False" );
     Serial.print( F( "[eepromDump] auto_dump_ms=" ));  Serial.println( data.auto_dump_ms );
-    Serial.print( F( "[eepromDump] read_ms=" ));       Serial.println( data.read_ms );
+    Serial.print( F( "[eepromDump] dup_ms=" ));        Serial.println( data.dup_ms );
 #endif
 }
 
@@ -45,20 +46,18 @@ void eepromRead( sEeprom &data, pEepromRead pfnRead, pEepromWrite pfnWrite )
  */
 void eepromReset( sEeprom &data, pEepromWrite pfnWrite )
 {
-    unsigned long def_max_frequency_timeout = 120000;        // 2 mn
-    unsigned long def_unchanged_timeout = 3600000;           // 1 h
 #ifdef EEPROM_DEBUG
     Serial.println( F( "[eepromReset]" ));
 #endif
     memset( &data, '\0', sizeof( sEeprom ));
-    strcpy( data.mark, "PWI" );
+    strcpy_P( data.mark, pwiLabel );
     data.version = EEPROM_VERSION;
   
-    data.min_period_ms = 60000;     // 1mn
+    data.min_period_ms = 10000;     // 10s
     data.max_period_ms = 3600000;   // 1h
     data.dup_thread = false;
     data.auto_dump_ms = 86400000;   // 24h
-    data.read_ms = 1000;
+    data.dup_ms = 10000;            // 10s
   
     eepromWrite( data, pfnWrite );
 }

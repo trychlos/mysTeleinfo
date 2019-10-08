@@ -140,11 +140,11 @@ class Linky : public pwiSensor
 {
     public:
                                   Linky( uint8_t id, uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin );
-        virtual void              dump();
         virtual void              ledOff( uint8_t pin );
         virtual void              ledOn( uint8_t pin );
         virtual void              loop();
         virtual void              present();
+        virtual void              send( bool all=false );
         virtual void              setDup( bool dup );
         virtual void              setup( uint32_t min_period_ms, uint32_t max_period_ms );
 
@@ -181,6 +181,7 @@ class Linky : public pwiSensor
          */
                 void              init();
                 void              init_led( uint8_t *dest, uint8_t pin );
+                bool              checkHorodate( const char *p );
                 bool              decData( char *dest, uint32_t mask );
                 bool              decData( uint8_t *dest, uint32_t mask );
                 bool              decData( uint16_t *dest, uint32_t mask );
@@ -190,7 +191,6 @@ class Linky : public pwiSensor
                 bool              ig_checksum( void );
                 void              ig_decode( void );
                 void              ig_receive( void );
-                void              send( bool all=false );
                 void              trameLedSet( uint32_t period_ms );
 
         static  bool              MeasureCb( void *data );

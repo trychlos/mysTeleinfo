@@ -25,7 +25,7 @@ typedef struct {
     unsigned long max_period_ms;
     bool          dup_thread;
     unsigned long auto_dump_ms;
-    unsigned long read_ms;
+    unsigned long dup_ms;
 }
   sEeprom;
 
