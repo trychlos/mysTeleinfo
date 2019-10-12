@@ -10,11 +10,6 @@
  Todo
  ====
 
-   4 2017- 4- 2 daily retransmit does not work
-
-   5 2017- 4- 2 configure the retransmit periodicity through a request
-                from the Jeedom controller
-
    6
 
 -----------------------------------------------------------------------
@@ -29,6 +24,13 @@
 
    3 2017- 3-31 retransmit data after a timeout even if not modified
      2017- 3-31 done with a 1-day timeout on fix variables only
+
+   4 2017- 4- 2 daily retransmit does not work
+     2019-10- 9 done through the pwiSensor class
+
+   5 2017- 4- 2 configure the retransmit periodicity through a request
+                from the Jeedom controller
+     2019-10- 9 done through the pwiSensor class
 
 -----------------------------------------------------------------------
  P. Wieser - Created on 2017, mar. 31st

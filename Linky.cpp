@@ -68,6 +68,7 @@ const char CLy_Sep[] = { Car_HT, '\0' };
 #define bLy_ccasnm1   (0x01 << 13)      /* CCASN-1 */
 #define bLy_prm       (0x01 << 14)      /* PRM */
 #define bLy_ntarf     (0x01 << 15)      /* NATRF */
+#define bLy_hchp      (0x01 << 16)      /* booleen HC/HP */
 
 P1(PLy_adsc)      = "ADSC";
 P1(PLy_date)      = "DATE";
@@ -314,7 +315,7 @@ void Linky::send( bool all /*=false*/ )
         msg.clear();
         ::send( msg.setSensor( id+15 ).setType( V_VAR1 ).set( this->tic.ntarf ));
     }
-    if( all || ( this->_DNFR & bLy_ltarf )){
+    if( all || ( this->_DNFR & bLy_hchp )){
         msg.clear();
         ::send( msg.setSensor( id+16 ).setType( V_VAR1 ).set( this->tic.hchp ));
     }
@@ -407,29 +408,48 @@ bool Linky::decData( char *dest, uint32_t mask )
 {
     _pDec = strtok( NULL, CLy_Sep );
     bool valid = true;
+    bool hchp = false;
 
     // check data validity
-    // ADSC = only digits
+    // ADSC = 12 digits
     if( mask == bLy_adsc ){
-        for( uint8_t i=0 ; _pDec[i] ; ++i ){
-            if( !isdigit( _pDec[i] )){
-                valid = false;
-                break;
+        if( strlen( _pDec ) != LINKY_ADSC_SIZE ){
+            valid = false;
+        } else {
+            for( uint8_t i=0 ; _pDec[i] ; ++i ){
+                if( !isdigit( _pDec[i] )){
+                    valid = false;
+                    break;
+                }
             }
         }
+
     } else if( mask == bLy_date ){
         valid = this->checkHorodate( _pDec );
 
     } else if( mask == bLy_ngtf ){
-        if( strcmp( _pDec, PLy_ngtf_HCHP ) != 0 ){
+        if( strcmp_P( _pDec, PLy_ngtf_HCHP ) != 0 ){
+            valid = false;
+        }
+
+    } else if( mask == bLy_ltarf ){
+        if( !strcmp_P( _pDec, PLy_ltarf_HP )){
+            hchp = true;
+        } else if( !strcmp_P( _pDec, PLy_ltarf_HC )){
+            hchp = false;
+        } else {
             valid = false;
         }
 
     } else if( mask == bLy_prm ){
-        for( uint8_t i=0 ; _pDec[i] ; ++i ){
-            if( !isdigit( _pDec[i] )){
-                valid = false;
-                break;
+        if( strlen( _pDec ) != LINKY_PRM_SIZE ){
+            valid = false;
+        } else {
+            for( uint8_t i=0 ; _pDec[i] ; ++i ){
+                if( !isdigit( _pDec[i] )){
+                    valid = false;
+                    break;
+                }
             }
         }
     }
@@ -440,15 +460,16 @@ bool Linky::decData( char *dest, uint32_t mask )
             SetBits( _DNFR, mask );
     
             if( mask == bLy_ltarf ){
-                if( !strcmp_P( dest, PLy_ltarf_HP )){
+                if( hchp ){
                     this->ledOff( this->hcPin );
                     this->ledOn( this->hpPin );
                     this->tic.hchp = true;
-                } else if( !strcmp_P( dest, PLy_ltarf_HC )){
+                } else {
                     this->ledOff( this->hpPin );
                     this->ledOn( this->hcPin );
                     this->tic.hchp = false;
                 }
+                SetBits( _DNFR, bLy_hchp );
             }
         }
     }
@@ -462,8 +483,14 @@ bool Linky::decData( uint8_t *dest, uint32_t mask )
     bool valid = true;
     uint8_t uint = ( uint8_t ) atoi( _pDec );
 
-    if( mask == bLy_pref ){
-        valid = ( uint != 0 && uint != 1 );    
+    if( mask == bLy_irms1 ){
+        valid = ( uint != 0 );
+
+    } else if( mask == bLy_pref ){
+        valid = ( uint != 0 && uint != 1 );
+
+    } else if( mask == bLy_ntarf ){
+        valid = ( uint > 0 );
     }
 
     if( valid ){
@@ -480,10 +507,37 @@ bool Linky::decData( uint16_t *dest, uint32_t mask )
 {
     _pDec = strtok( NULL, CLy_Sep );
     uint16_t uint = ( uint16_t ) atoi( _pDec );
-    if( uint != *dest ){
-        *dest = uint;
-        SetBits( _DNFR, mask );
+    bool valid = true;
+
+    if( mask == bLy_urms1 ){
+        if( uint < 150 ){
+            valid = false;
+        } else {
+            float fcent = ((( float ) uint / ( float ) *dest )) - 1.;
+            fcent = abs( fcent );
+            fcent *= 100.;
+            if(( uint8_t ) fcent > 25 ){
+                valid = false;
+            }
+        }
+
+    } else if( mask == bLy_sinsts ){
+        uint16_t estim = tic.irms1 * tic.urms1;
+        float fcent = ((( float ) estim / ( float ) uint )) - 1.;
+        fcent = abs( fcent );
+        fcent *= 100.;
+        if(( uint8_t ) fcent > 25 ){
+            valid = false;
+        }
     }
+
+    if( valid ){
+        if( uint != *dest ){
+            *dest = uint;
+            SetBits( _DNFR, mask );
+        }
+    }
+
     return( _DNFR & mask );
 }
 
@@ -491,7 +545,7 @@ bool Linky::decData( uint32_t *dest, uint32_t mask )
 {
     bool valid = true;
     _pDec = strtok( NULL, CLy_Sep );
-    uint16_t ulong = atol( _pDec );
+    uint32_t ulong = atol( _pDec );
 
     if( mask == bLy_easf01 || mask == bLy_easf02 ){
         if( ulong < *dest ){
