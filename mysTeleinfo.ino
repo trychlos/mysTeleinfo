@@ -25,8 +25,8 @@
  * pwi 2019- 9-22 v3.0-2019
  *                  update to TIC standard, based on LkyRx_06 by MicroQuettas
  *                  use standard SoftwareSerial library
- * Sketch uses 23052 bytes (75%) of program storage space. Maximum is 30720 bytes.
-  Global variables use 1899 bytes (92%) of dynamic memory, leaving 149 bytes for local variables. Maximum is 2048 bytes.
+ * Sketch uses 25284 bytes (82%) of program storage space. Maximum is 30720 bytes.
+Global variables use 1022 bytes (49%) of dynamic memory, leaving 1026 bytes for local variables. Maximum is 2048 bytes.
  */
 
 // uncomment for debugging this sketch
