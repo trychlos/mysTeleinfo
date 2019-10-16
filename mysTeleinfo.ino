@@ -25,8 +25,8 @@
  * pwi 2019- 9-22 v3.0-2019
  *                  update to TIC standard, based on LkyRx_06 by MicroQuettas
  *                  use standard SoftwareSerial library
- * Sketch uses 25284 bytes (82%) of program storage space. Maximum is 30720 bytes.
-Global variables use 1022 bytes (49%) of dynamic memory, leaving 1026 bytes for local variables. Maximum is 2048 bytes.
+ * Sketch uses 23548 bytes (76%) of program storage space. Maximum is 30720 bytes.
+Global variables use 1057 bytes (51%) of dynamic memory, leaving 991 bytes for local variables. Maximum is 2048 bytes.
  */
 
 // uncomment for debugging this sketch
@@ -142,7 +142,7 @@ void mainAutoDumpSet( unsigned long ulong )
 void mainDuplicateArmSend()
 {
     msg.clear();
-    send( msg.setSensor( CHILD_MAIN+4 ).setType( V_VAR1 ).set( eeprom.dup_thread ));
+    send( msg.setSensor( CHILD_MAIN+3 ).setType( V_VAR1 ).set( eeprom.dup_thread ));
 }
 
 void mainDuplicateArmSet( bool duplicate )
