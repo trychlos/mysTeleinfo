@@ -86,6 +86,7 @@ P1(PLy_ccasn)     = "CCASN";
 P1(PLy_ccasnm1)   = "CCASN-1";
 P1(PLy_prm)       = "PRM";
 P1(PLy_ntarf)     = "NTARF";
+P1(PLy_hchp)      = "HCHP";
 
 P1(PLy_ngtf_HCHP) = "H PLEINE/CREUSE ";
 P1(PLy_ltarf_HP)  = "  HEURE  PLEINE ";
@@ -99,7 +100,7 @@ P1(PLy_ltarf_HC)  = "  HEURE  CREUSE ";
 
 /**
  * Linky::Linky:
- * @id: the starting identifier of this pwiSensor child.
+ * @id: the starting identifier of this MySensors child.
  * @rxPin: the reception pin number.
  * @ledPin: the pin number to which the reception LED is attached.
  * @hcPin: the pin number to which the HC LED is attached.
@@ -109,9 +110,12 @@ P1(PLy_ltarf_HC)  = "  HEURE  CREUSE ";
  *
  * Public.
  */
-Linky::Linky( uint8_t id, uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin ) : pwiSensor( id, rxPin ), linkySerial( rxPin, CLy_TxPin)
+Linky::Linky( uint8_t id, uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin ) : linkySerial( rxPin, CLy_TxPin)
 {
     this->init();
+
+    this->id = id;
+    this->rxPin = rxPin;
 
     this->init_led( &this->ledPin, ledPin );
     this->init_led( &this->hcPin, hcPin );
@@ -214,7 +218,7 @@ void Linky::loop()
  */
 void Linky::present()
 {
-    uint8_t id = this->getId();
+    uint8_t id = this->id;
 #ifdef LINKY_DEBUG
     Serial.print( F( "Linky::present() id=" ));
     Serial.println( id );
@@ -235,7 +239,7 @@ void Linky::present()
     ::present( id+13, S_POWER, PGMSTR( PLy_ccasnm1 ));
     ::present( id+14, S_POWER, PGMSTR( PLy_prm ));
     ::present( id+15, S_POWER, PGMSTR( PLy_ntarf ));
-    ::present( id+16, S_POWER, F( "HCHP" ));
+    ::present( id+16, S_POWER, PGMSTR( PLy_hchp ));
 }
 
 /**
@@ -248,7 +252,8 @@ void Linky::present()
 void Linky::send( bool all /*=false*/ )
 {
     MyMessage msg;
-    uint8_t id = this->getId();
+    uint8_t id = this->id;
+
     if( all || ( this->_DNFR & bLy_adsc )){
         msg.clear();
         ::send( msg.setSensor( id ).setType( V_VAR1 ).set( this->tic.adsc ));
@@ -326,6 +331,9 @@ void Linky::send( bool all /*=false*/ )
  * Linky::setDup:
  * @dup: whether the next trame should be duplicated.
  *
+ * The duplication period is managed by the main program, which takes care of setting
+ * this flag on and off.
+ *
  * Public.
  */
 void Linky::setDup( bool dup )
@@ -350,17 +358,24 @@ void Linky::setup( uint32_t min_period_ms, uint32_t max_period_ms )
 #endif
 
     /* Initialize the SoftwareSerial */
-    uint8_t rxPin = this->getPin();
+    uint8_t rxPin = this->rxPin;
     pinMode( rxPin, INPUT );
     pinMode( CLy_TxPin, OUTPUT );
     linkySerial.begin( CLy_Bds );
 
-    /* setup the pwiSensor base class */
-    (( pwiSensor * ) this )->setup( min_period_ms, max_period_ms, Linky::MeasureCb, Linky::SendCb, this );
+    /* setup the min_period (max frequency) and max_period (unchanged timeout) timers
+     */
+    this->min_period.setup( "MinPeriod", min_period_ms, false, Linky::MinPeriodCb, this );
+    this->min_period.start();
+    this->max_period.setup( "MaxPeriod", max_period_ms, false, Linky::MaxPeriodCb, this );
+    this->max_period.start();
 
-    /* setup the trame indicator timers */
-    this->led_on_timer.setup( "LedOn", 100, true, Linky::TrameLedOnCb, this );
-    this->led_status_timer.setup( "Statut", TRAMEOK_MS, false, Linky::TrameLedStatusCb, this );
+    /* setup the trame indicator timers
+     *  the status LED  is visible on the front panel, we so manage it with a hardware timer
+     *  light up delay is 0.1s (0 +0.1) -> set up with 150 ms
+     */
+    this->led_on_timer.setup( "LedOn", 150, true, Linky::TrameLedOnCb, this );
+    this->led_status_timer.setup( "Status", TRAMEOK_MS, false, Linky::TrameLedStatusCb, this );
     this->timeout_timer.setup( "Timeout", 10000, true, Linky::TrameTimeoutCb, this );
 
     /* light on the trame led */
@@ -463,12 +478,11 @@ bool Linky::decData( char *dest, uint32_t mask )
                 if( hchp ){
                     this->ledOff( this->hcPin );
                     this->ledOn( this->hpPin );
-                    this->tic.hchp = true;
                 } else {
                     this->ledOff( this->hpPin );
                     this->ledOn( this->hcPin );
-                    this->tic.hchp = false;
                 }
+                this->tic.hchp = hchp;
                 SetBits( _DNFR, bLy_hchp );
             }
         }
@@ -914,31 +928,31 @@ void Linky::trameLedSet( uint32_t period_ms )
 }
 
 /**
- * Linky::MeasureCb:
- * @data: a pointer to the Linky instance.
+ * Linky::MaxPeriodCb:
+ * @user_data: a pointer to the Linky instance.
  * 
- * Returns: %TRUE if some information has changed.
+ * On max period, it is time to send all unchanged data.
  *
  * Static private.
  */
-bool Linky::MeasureCb( void *data )
+void Linky::MaxPeriodCb( void *user_data )
 {
-    Linky *instance = ( Linky *) data;
-    return( instance->_DNFR != 0 );
+    Linky *instance = ( Linky *) user_data;
+    instance->send( true );
 }
 
 /**
- * Linky::SendCb:
- * @data: a pointer to the Linky instance.
+ * Linky::MinPeriodCb:
+ * @user_data: a pointer to the Linky instance.
  * 
- * Unconditionally send the informations.
+ * On min period, it is time to send changed data.
  *
  * Static private.
  */
-void Linky::SendCb( void *data )
+void Linky::MinPeriodCb( void *user_data )
 {
-    Linky *instance = ( Linky *) data;
-    instance->send();
+    Linky *instance = ( Linky *) user_data;
+    instance->send( false );
 }
 
 /**

@@ -100,7 +100,8 @@
 #define __LINKY_H__
 
 #include <SoftwareSerial.h>
-#include <pwiSensor.h>
+#include <pwiTimer.h>
+#include <pwiTimer2.h>
 
 #define LINKY_BUFSIZE       32    /* max size of the received, not ignored, information groups */
 #define LINKY_ADSC_SIZE     12
@@ -136,7 +137,7 @@ typedef struct {
 }
   tic_t;
 
-class Linky : public pwiSensor
+class Linky
 {
     public:
                                   Linky( uint8_t id, uint8_t rxPin, uint8_t ledPin, uint8_t hcPin, uint8_t hpPin );
@@ -154,6 +155,8 @@ class Linky : public pwiSensor
          *  at the very same time that this object instance itself (see Linky() constructor).
          */
                 SoftwareSerial    linkySerial;
+                uint8_t           id;
+                uint8_t           rxPin;
                 uint8_t           ledPin;
                 uint8_t           hcPin;
                 uint8_t           hpPin;
@@ -172,10 +175,15 @@ class Linky : public pwiSensor
 
                 tic_t             tic;
                 uint32_t          stx_ms;
-                pwiTimer          led_status_timer;         /* 3 sec if OK, 1 sec else */
-                pwiTimer          led_on_timer;             /* 0.1 sec */
+
+                pwiTimer          min_period;
+                pwiTimer          max_period;
                 pwiTimer          timeout_timer;
                 bool              dup_thread;
+
+                // because the LED is visible on the front panel, we choose to manage it with a hardware timer
+                pwiTimer2         led_status_timer;         /* 3 sec if OK, 1 sec else */
+                pwiTimer2         led_on_timer;             /* 0.1 sec */
 
         /* private methods
          */
@@ -193,8 +201,10 @@ class Linky : public pwiSensor
                 void              ig_receive( void );
                 void              trameLedSet( uint32_t period_ms );
 
-        static  bool              MeasureCb( void *data );
-        static  void              SendCb( void *data );
+        /* static methods
+         */
+        static  void              MaxPeriodCb( void *user_data );
+        static  void              MinPeriodCb( void *user_data );
         static  void              TrameLedOnCb( void *data );
         static  void              TrameLedStatusCb( void *data );
         static  void              TrameTimeoutCb( void *data );
