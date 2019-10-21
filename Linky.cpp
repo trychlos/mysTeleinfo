@@ -17,16 +17,6 @@
 #define LINKY_DEBUG
 
 /****************************** Macros ********************************/
-#define SetBits(Data, Mask) \
-Data |= Mask
-
-#define ResetBits(Data, Mask) \
-Data &= ~Mask
-
-#define InsertBits(Data, Mask, Value) \
-Data &= ~Mask;\
-Data |= (Value & Mask)
-
 #ifndef P1
 #define P1(name) const char name[] PROGMEM
 #endif
@@ -34,12 +24,6 @@ Data |= (Value & Mask)
 /***************************** Defines ***************************************/
 #define CLy_Bds       9600                      /* Transmission speed in bds */
 #define CLy_TxPin     8                         /* TX pin (unused but reserved) */
-
-#define bLy_Rec      (0x01 << 0)                /* Receiving */
-#define bLy_RxB      (0x01 << 1)                /* Receive in buffer B */
-#define bLy_Cks      (0x01 << 2)                /* Check Cks */
-#define bLy_GId      (0x01 << 3)                /* Group identification */
-#define bLy_Dec      (0x01 << 4)                /* Decode */
 
 #define Car_SP        0x20                      /* Char space */
 #define Car_HT        0x09                      /* Horizontal tabulation */
@@ -51,24 +35,6 @@ Data |= (Value & Mask)
 const char CLy_Sep[] = { Car_HT, '\0' };
 
 #define CLy_MinLg     8                         /* Minimum useful message length */
-
-#define bLy_adsc      (0x01 <<  0)      /* ADSC group available (has changed since last send) */
-#define bLy_date      (0x01 <<  1)      /* DATE */
-#define bLy_ngtf      (0x01 <<  2)      /* NGTF */
-#define bLy_ltarf     (0x01 <<  3)      /* LTARF */
-#define bLy_easf01    (0x01 <<  4)      /* EASF01 */
-#define bLy_easf02    (0x01 <<  5)      /* EASF02 */
-#define bLy_irms1     (0x01 <<  6)      /* IRMS1 */
-#define bLy_urms1     (0x01 <<  7)      /* URMS1 */
-#define bLy_pref      (0x01 <<  8)      /* PREF */
-#define bLy_sinsts    (0x01 <<  9)      /* SINSTS */
-#define bLy_smaxsn    (0x01 << 10)      /* SMAXSN */
-#define bLy_smaxsnm1  (0x01 << 11)      /* SMAXSN-1 */
-#define bLy_ccasn     (0x01 << 12)      /* CCASN */
-#define bLy_ccasnm1   (0x01 << 13)      /* CCASN-1 */
-#define bLy_prm       (0x01 << 14)      /* PRM */
-#define bLy_ntarf     (0x01 << 15)      /* NATRF */
-#define bLy_hchp      (0x01 << 16)      /* booleen HC/HP */
 
 P1(PLy_adsc)      = "ADSC";
 P1(PLy_date)      = "DATE";
@@ -194,8 +160,8 @@ void Linky::ledOn( uint8_t pin )
 void Linky::loop()
 {
     /* 1st part, last action : decode information */
-    if( _FR & bLy_Dec ){
-        ResetBits( _FR, bLy_Dec );
+    if( bitRead( _FR, lst_Dec )){
+        bitClear( _FR, lst_Dec );
 #ifdef LINKY_DEBUG
         Serial.print( _pDec );
 #endif
@@ -254,43 +220,43 @@ void Linky::send( bool all /*=false*/ )
     MyMessage msg;
     uint8_t id = this->id;
 
-    if( all || ( this->_DNFR & bLy_adsc )){
+    if( all || bitRead( this->_DNFR, let_adsc )){
         msg.clear();
         ::send( msg.setSensor( id ).setType( V_VAR1 ).set( this->tic.adsc ));
     }
-    if( all || ( this->_DNFR & bLy_date )){
+    if( all || bitRead( this->_DNFR, let_date )){
         msg.clear();
         ::send( msg.setSensor( id+1 ).setType( V_VAR1 ).set( this->tic.date ));
     }
-    if( all || ( this->_DNFR & bLy_ngtf )){
+    if( all || bitRead( this->_DNFR, let_ngtf )){
         msg.clear();
         ::send( msg.setSensor( id+2 ).setType( V_VAR1 ).set( this->tic.ngtf ));
     }
-    if( all || ( this->_DNFR & bLy_ltarf )){
+    if( all || bitRead( this->_DNFR, let_ltarf )){
         msg.clear();
         ::send( msg.setSensor( id+3 ).setType( V_VAR1 ).set( this->tic.ltarf ));
     }
-    if( all || ( this->_DNFR & bLy_easf01 )){
+    if( all || bitRead( this->_DNFR, let_easf01 )){
         msg.clear();
         ::send( msg.setSensor( id+4 ).setType( V_KWH ).set( this->tic.easf01 ));
     }
-    if( all || ( this->_DNFR & bLy_easf02 )){
+    if( all || bitRead( this->_DNFR, let_easf02 )){
         msg.clear();
         ::send( msg.setSensor( id+5 ).setType( V_KWH ).set( this->tic.easf02 ));
     }
-    if( all || ( this->_DNFR & bLy_irms1 )){
+    if( all || bitRead( this->_DNFR, let_irms1 )){
         msg.clear();
         ::send( msg.setSensor( id+6 ).setType( V_CURRENT ).set( this->tic.irms1 ));
     }
-    if( all || ( this->_DNFR & bLy_urms1 )){
+    if( all || bitRead( this->_DNFR, let_urms1 )){
         msg.clear();
         ::send( msg.setSensor( id+7 ).setType( V_VOLTAGE ).set( this->tic.urms1 ));
     }
-    if( all || ( this->_DNFR & bLy_pref )){
+    if( all || bitRead( this->_DNFR, let_pref )){
         msg.clear();
         ::send( msg.setSensor( id+8 ).setType( V_WATT ).set( this->tic.pref ));
     }
-    if( all || ( this->_DNFR & bLy_sinsts )){
+    if( all || bitRead( this->_DNFR, let_sinsts )){
         msg.clear();
         ::send( msg.setSensor( id+9 ).setType( V_WATT ).set( this->tic.sinsts ));
     }
@@ -312,15 +278,15 @@ void Linky::send( bool all /*=false*/ )
         ::send( msg.setSensor( id+13 ).setType( V_WATT ).set( this->tic.ccasnm1 ));
     }
     */
-    if( all || ( this->_DNFR & bLy_prm )){
+    if( all || bitRead( this->_DNFR, let_prm )){
         msg.clear();
         ::send( msg.setSensor( id+14 ).setType( V_VAR1 ).set( this->tic.prm ));
     }
-    if( all || ( this->_DNFR & bLy_ntarf )){
+    if( all || bitRead( this->_DNFR, let_ntarf )){
         msg.clear();
         ::send( msg.setSensor( id+15 ).setType( V_VAR1 ).set( this->tic.ntarf ));
     }
-    if( all || ( this->_DNFR & bLy_hchp )){
+    if( all || bitRead( this->_DNFR, let_hchp )){
         msg.clear();
         ::send( msg.setSensor( id+16 ).setType( V_VAR1 ).set( this->tic.hchp ));
     }
@@ -411,7 +377,7 @@ bool Linky::checkHorodate( const char *p )
 /**
  * Linky::decData:
  * @dest: the tic_t destination member.
- * @mask: the corresponding bitmask of _DNFR.
+ * @etiq: the exact data enum we are dealing with.
  * 
  * Decode and store the received data.
  * 
@@ -419,62 +385,64 @@ bool Linky::checkHorodate( const char *p )
  *
  * Private.
  */
-bool Linky::decData( char *dest, uint32_t mask )
+bool Linky::decData( char *dest, linky_etiq_t etiq )
 {
     _pDec = strtok( NULL, CLy_Sep );
-    bool valid = true;
+    bool valid = false;
     bool hchp = false;
+    uint8_t count;
 
     // check data validity
-    // ADSC = 12 digits
-    if( mask == bLy_adsc ){
-        if( strlen( _pDec ) != LINKY_ADSC_SIZE ){
-            valid = false;
-        } else {
-            for( uint8_t i=0 ; _pDec[i] ; ++i ){
-                if( !isdigit( _pDec[i] )){
-                    valid = false;
-                    break;
+    switch( etiq ){
+        case let_adsc:
+            if( strlen( _pDec ) == LINKY_ADSC_SIZE ){
+                for( uint8_t i=0, count=0 ; _pDec[i] ; ++i ){
+                    if( !isdigit( _pDec[i] )){
+                        count += 1;
+                        break;
+                    }
                 }
+                valid = ( count == 0 );
             }
-        }
+            break;
 
-    } else if( mask == bLy_date ){
-        valid = this->checkHorodate( _pDec );
+        case let_date:
+            valid = this->checkHorodate( _pDec );
+            break;
 
-    } else if( mask == bLy_ngtf ){
-        if( strcmp_P( _pDec, PLy_ngtf_HCHP ) != 0 ){
-            valid = false;
-        }
+        case let_ngtf:
+            valid = ( strcmp_P( _pDec, PLy_ngtf_HCHP ) == 0 );
+            break;
 
-    } else if( mask == bLy_ltarf ){
-        if( !strcmp_P( _pDec, PLy_ltarf_HP )){
-            hchp = true;
-        } else if( !strcmp_P( _pDec, PLy_ltarf_HC )){
-            hchp = false;
-        } else {
-            valid = false;
-        }
+        case let_ltarf:
+            if( !strcmp_P( _pDec, PLy_ltarf_HP )){
+                hchp = true;
+                valid = true;
+            } else if( !strcmp_P( _pDec, PLy_ltarf_HC )){
+                hchp = false;
+                valid = true;
+            }
+            break;
 
-    } else if( mask == bLy_prm ){
-        if( strlen( _pDec ) != LINKY_PRM_SIZE ){
-            valid = false;
-        } else {
-            for( uint8_t i=0 ; _pDec[i] ; ++i ){
-                if( !isdigit( _pDec[i] )){
-                    valid = false;
-                    break;
+        case let_prm:
+            if( strlen( _pDec ) == LINKY_PRM_SIZE ){
+                for( uint8_t i=0, count=0 ; _pDec[i] ; ++i ){
+                    if( !isdigit( _pDec[i] )){
+                        count += 1;
+                        break;
+                    }
                 }
+                valid = ( count == 0 );
             }
-        }
+            break;
     }
 
     if( valid ){
         if( strcmp( _pDec, dest ) != 0 ){
             strcpy( dest, _pDec );
-            SetBits( _DNFR, mask );
+            bitSet( _DNFR, etiq );
     
-            if( mask == bLy_ltarf ){
+            if( etiq == let_ltarf ){
                 if( hchp ){
                     this->ledOff( this->hcPin );
                     this->ledOn( this->hpPin );
@@ -483,105 +451,106 @@ bool Linky::decData( char *dest, uint32_t mask )
                     this->ledOn( this->hcPin );
                 }
                 this->tic.hchp = hchp;
-                SetBits( _DNFR, bLy_hchp );
+                bitSet( _DNFR, let_hchp );
             }
         }
     }
 
-    return( _DNFR & mask );
+    return( bitRead( _DNFR, etiq ));
 }
 
-bool Linky::decData( uint8_t *dest, uint32_t mask )
+bool Linky::decData( uint8_t *dest, linky_etiq_t etiq )
 {
     _pDec = strtok( NULL, CLy_Sep );
-    bool valid = true;
+    bool valid = false;
     uint8_t uint = ( uint8_t ) atoi( _pDec );
 
-    if( mask == bLy_irms1 ){
-        valid = ( uint != 0 );
+    switch( etiq ){
+        case let_irms1:
+            valid = ( uint != 0 );
+            break;
 
-    } else if( mask == bLy_pref ){
-        valid = ( uint != 0 && uint != 1 );
+        case let_pref:
+            valid = ( uint != 0 && uint != 1 );
+            break;
 
-    } else if( mask == bLy_ntarf ){
-        valid = ( uint > 0 );
+        case let_ntarf:
+            valid = ( uint > 0 );
+            break;
     }
 
     if( valid ){
         if( uint != *dest ){
             *dest = uint;
-            SetBits( _DNFR, mask );
+            bitSet( _DNFR, etiq );
         }
     }
 
-    return( _DNFR & mask );
+    return( bitRead( _DNFR, etiq ));
 }
 
-bool Linky::decData( uint16_t *dest, uint32_t mask )
+bool Linky::decData( uint16_t *dest, linky_etiq_t etiq )
 {
     _pDec = strtok( NULL, CLy_Sep );
     uint16_t uint = ( uint16_t ) atoi( _pDec );
-    bool valid = true;
+    bool valid = false;
 
-    if( mask == bLy_urms1 ){
-        if( uint < 150 ){
-            valid = false;
-        } else {
-            float fcent = ((( float ) uint / ( float ) *dest )) - 1.;
+    switch( etiq ){
+        case let_urms1:
+            if( uint > 150 ){
+                float fcent = ((( float ) uint / ( float ) *dest )) - 1.;
+                fcent = abs( fcent );
+                fcent *= 100.;
+                valid = (( uint8_t ) fcent < 25 );
+            }
+            break;
+
+        case let_sinsts:
+            uint16_t estim = tic.irms1 * tic.urms1;
+            float fcent = ((( float ) estim / ( float ) uint )) - 1.;
             fcent = abs( fcent );
             fcent *= 100.;
-            if(( uint8_t ) fcent > 25 ){
-                valid = false;
-            }
-        }
-
-    } else if( mask == bLy_sinsts ){
-        uint16_t estim = tic.irms1 * tic.urms1;
-        float fcent = ((( float ) estim / ( float ) uint )) - 1.;
-        fcent = abs( fcent );
-        fcent *= 100.;
-        if(( uint8_t ) fcent > 25 ){
-            valid = false;
-        }
+            valid = (( uint8_t ) fcent < 25 );
+            break;
     }
 
     if( valid ){
         if( uint != *dest ){
             *dest = uint;
-            SetBits( _DNFR, mask );
+            bitSet( _DNFR, etiq );
         }
     }
 
-    return( _DNFR & mask );
+    return( bitRead( _DNFR, etiq ));
 }
 
-bool Linky::decData( uint32_t *dest, uint32_t mask )
+bool Linky::decData( uint32_t *dest, linky_etiq_t etiq )
 {
-    bool valid = true;
+    bool valid = false;
     _pDec = strtok( NULL, CLy_Sep );
     uint32_t ulong = atol( _pDec );
 
-    if( mask == bLy_easf01 || mask == bLy_easf02 ){
-        if( ulong < *dest ){
-            valid = false;
-        }
+    switch( etiq ){
+        case let_easf01:
+        case let_easf02:
+            valid = ( ulong >= *dest );
+            break;
     }
 
     if( valid ){
         if( ulong != *dest ){
             *dest = ulong;
-            SetBits( _DNFR, mask );
+            bitSet( _DNFR, etiq );
         }
     }
 
-    return( _DNFR & mask );
+    return( bitRead( _DNFR, etiq ));
 }
 
-bool Linky::decData( horodate_t *dest, uint32_t mask )
+bool Linky::decData( horodate_t *dest, linky_etiq_t etiq )
 {
     _pDec = strtok( NULL, CLy_Sep );
     char *pval = strtok( NULL, CLy_Sep );
-
     bool valid = this->checkHorodate( _pDec );
 
     if( valid ){
@@ -589,11 +558,11 @@ bool Linky::decData( horodate_t *dest, uint32_t mask )
             strncpy( dest->date, _pDec, LINKY_DATE_SIZE );
             uint16_t ulong = atol( pval );
             dest->value = ulong;
-            SetBits( _DNFR, mask );
+            bitSet( _DNFR, etiq );
         }
     }
 
-    return( _DNFR & mask );
+    return( bitRead( _DNFR, etiq ));
 }
 
 /**
@@ -717,67 +686,67 @@ void Linky::ig_decode()
 
     if( !strcmp_P( _pDec, PLy_adsc )){
         found = true;
-        this->decData(( char * ) this->tic.adsc, bLy_adsc );
+        this->decData(( char * ) this->tic.adsc, let_adsc );
       
     } else if( !strcmp_P( _pDec, PLy_date )){
         found = true;
-        this->decData(( char * ) this->tic.date, bLy_date );
+        this->decData(( char * ) this->tic.date, let_date );
       
     } else if( !strcmp_P( _pDec, PLy_ngtf )){
         found = true;
-        this->decData(( char * ) this->tic.ngtf, bLy_ngtf );
+        this->decData(( char * ) this->tic.ngtf, let_ngtf );
       
     } else if( !strcmp_P( _pDec, PLy_ltarf )){
         found = true;
-        this->decData(( char * ) this->tic.ltarf, bLy_ltarf );
+        this->decData(( char * ) this->tic.ltarf, let_ltarf );
       
     } else if( !strcmp_P( _pDec, PLy_easf01 )){
         found = true;
-        this->decData( &this->tic.easf01, bLy_easf01 );
+        this->decData( &this->tic.easf01, let_easf01 );
       
     } else if( !strcmp_P( _pDec, PLy_easf02 )){
         found = true;
-        this->decData( &this->tic.easf02, bLy_easf02 );
+        this->decData( &this->tic.easf02, let_easf02 );
       
     } else if( !strcmp_P( _pDec, PLy_irms1 )){
         found = true;
-        this->decData( &this->tic.irms1, bLy_irms1 );
+        this->decData( &this->tic.irms1, let_irms1 );
       
     } else if( !strcmp_P( _pDec, PLy_urms1 )){
         found = true;
-        this->decData( &this->tic.urms1, bLy_urms1 );
+        this->decData( &this->tic.urms1, let_urms1 );
       
     } else if( !strcmp_P( _pDec, PLy_pref )){
         found = true;
-        this->decData( &this->tic.pref, bLy_pref );
+        this->decData( &this->tic.pref, let_pref );
       
     } else if( !strcmp_P( _pDec, PLy_sinsts )){
         found = true;
-        this->decData( &this->tic.sinsts, bLy_sinsts );
+        this->decData( &this->tic.sinsts, let_sinsts );
       
     } else if( !strcmp_P( _pDec, PLy_smaxsn )){
         found = true;
-        this->decData( &this->tic.smaxsn, bLy_smaxsn );
+        this->decData( &this->tic.smaxsn, let_smaxsn );
       
     } else if( !strcmp_P( _pDec, PLy_smaxsnm1 )){
         found = true;
-        this->decData( &this->tic.smaxsnm1, bLy_smaxsnm1 );
+        this->decData( &this->tic.smaxsnm1, let_smaxsnm1 );
       
     } else if( !strcmp_P( _pDec, PLy_ccasn )){
         found = true;
-        this->decData( &this->tic.ccasn, bLy_ccasn );
+        this->decData( &this->tic.ccasn, let_ccasn );
       
     } else if( !strcmp_P( _pDec, PLy_ccasnm1 )){
         found = true;
-        this->decData( &this->tic.ccasnm1, bLy_ccasnm1 );
+        this->decData( &this->tic.ccasnm1, let_ccasnm1 );
       
     } else if( !strcmp_P( _pDec, PLy_prm )){
         found = true;
-        this->decData(( char * ) this->tic.prm, bLy_prm );
+        this->decData(( char * ) this->tic.prm, let_prm );
       
     } else if( !strcmp_P( _pDec, PLy_ntarf )){
         found = true;
-        this->decData( &this->tic.ntarf, bLy_ntarf );
+        this->decData( &this->tic.ntarf, let_ntarf );
     }
 
 #ifdef LINKY_DEBUG
@@ -811,10 +780,10 @@ void Linky::ig_receive()
         //Serial.println( c, HEX );
 #endif
         /* On going reception */
-        if( _FR & bLy_Rec ){
+        if( bitRead( _FR, lst_Rec )){
             /* Received end of information group char, aka CR, aka \r, aka 0x0D */
             if( c == Car_EOIG ){   
-                ResetBits(_FR, bLy_Rec);        /* Receiving complete */
+                bitClear( _FR, lst_Rec );       /* Receiving complete */
                 _iCks = _iRec-1;                /* Index of Cks in the message */
                 *(_pRec+_iRec) = '\0';          /* Terminate the string */
 #ifdef LINKY_DEBUG
@@ -823,17 +792,17 @@ void Linky::ig_receive()
 #endif
                 /* if checksum is OK, swap the buffers and decode the group */
                 if( this->ig_checksum()){
-                    SetBits( _FR, bLy_Dec );        /* Next step, decoding group information */
+                    bitSet( _FR, lst_Dec );         /* Next step, decoding group information */
                     /* Swap reception and decode buffers */
-                    if( _FR & bLy_RxB ){            /* Receiving in B, Decode in A, swap */
-                        ResetBits(_FR, bLy_RxB);
+                    if( bitRead( _FR, lst_RxB )){   /* Receiving in B, Decode in A, swap */
+                        bitClear( _FR, lst_RxB );
                         _pRec = _BfA;               /* --> Receive in A */
                         _pDec = _BfB;               /* --> Decode in B */
 #ifdef LINKY_DEBUG
                         //Serial.println( F( "receive() set _pRec=_BfA, _pDec=_BfB" ));
 #endif
                     } else {                        /* Receiving in A, Decode in B, swap */
-                        SetBits(_FR, bLy_RxB);
+                        bitSet( _FR, lst_RxB );
                         _pRec = _BfB;               /* --> Receive in B */
                         _pDec = _BfA;               /* --> Decode in A */
 #ifdef LINKY_DEBUG
@@ -850,7 +819,7 @@ void Linky::ig_receive()
                 *(_pRec+_iRec) = c;             /* Store received character */
                 _iRec += 1;
                 if( _iRec >= LINKY_BUFSIZE-1 ){       /* Buffer overflow */
-                    ResetBits(_FR, bLy_Rec);          /* Stop reception and do nothing */
+                    bitClear( _FR, lst_Rec );         /* Stop reception and do nothing */
                     *(_pRec+LINKY_BUFSIZE-1) = '\0';
                     Serial.print( _pRec );
                     Serial.print( F( " buffer overflow (" ));
@@ -863,7 +832,7 @@ void Linky::ig_receive()
             At startup, wait until we have catch the start of the trame */
         } else if( this->stx_ms > 0 && c == Car_SOIG ){   /* Received start of information group */
             _iRec = 0;
-            SetBits(_FR, bLy_Rec);   /* Start reception */
+            bitSet( _FR, lst_Rec );             /* Start reception */
 
         /* start of trame */
         } else if( c == Car_STX ){

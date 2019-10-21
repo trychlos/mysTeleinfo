@@ -137,6 +137,41 @@ typedef struct {
 }
   tic_t;
 
+/* bit position of the corresponding data in the _DNFR data new flag register
+ *  each information group has here its own bit position which records the
+ *  presence of a new value to be sent to the controller
+ */
+typedef enum {
+    let_adsc = 0,
+    let_date,
+    let_ngtf,
+    let_ltarf,
+    let_easf01,
+    let_easf02,
+    let_irms1,
+    let_urms1,
+    let_pref,
+    let_sinsts,
+    let_smaxsn,
+    let_smaxsnm1,
+    let_ccasn,
+    let_ccasnm1,
+    let_prm,
+    let_ntarf,
+    let_hchp
+}
+  linky_etiq_t;
+
+/* bit position of the next step in the flag register
+ *  this determines the next step to be done in the receiving loop
+ */
+typedef enum {
+    lst_Rec = 0,  // receive
+    lst_RxB,      // receive in buffer B (rather than in buffer A)
+    lst_Dec       // decode
+}
+  linky_step_t;
+
 class Linky
 {
     public:
@@ -190,11 +225,11 @@ class Linky
                 void              init();
                 void              init_led( uint8_t *dest, uint8_t pin );
                 bool              checkHorodate( const char *p );
-                bool              decData( char *dest, uint32_t mask );
-                bool              decData( uint8_t *dest, uint32_t mask );
-                bool              decData( uint16_t *dest, uint32_t mask );
-                bool              decData( uint32_t *dest, uint32_t mask );
-                bool              decData( horodate_t *dest, uint32_t mask );
+                bool              decData( char *dest, linky_etiq_t etiq );
+                bool              decData( uint8_t *dest, linky_etiq_t etiq );
+                bool              decData( uint16_t *dest, linky_etiq_t etiq );
+                bool              decData( uint32_t *dest, linky_etiq_t etiq );
+                bool              decData( horodate_t *dest, linky_etiq_t etiq );
                 void              dupThread( void );
                 bool              ig_checksum( void );
                 void              ig_decode( void );
