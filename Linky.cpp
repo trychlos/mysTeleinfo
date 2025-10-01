@@ -1,4 +1,4 @@
-/* **********************************************************************
+/* **********************************************************************************************************
  *             Objet decodeur de teleinformation client (TIC)
  *              format Linky "historique" ou anciens compteurs
  *              electroniques.
@@ -7,14 +7,15 @@
  * V06 : MicroQuettas mars 2018
  *
  * pwi 2019- 9-22 adaptation to Enedis-NOI-CPT_54E v3 TIC standard
- ***********************************************************************/
+ ********************************************************************************************************** */
 #include <Arduino.h>
 #include <core/MySensorsCore.h>
 #include <pwiCommon.h>
+#include "childids.h"
 #include "Linky.h"
 
 // uncomment for debug this class
-#define LINKY_DEBUG
+//#define LINKY_DEBUG
 
 /****************************** Macros ********************************/
 #ifndef P1
@@ -37,6 +38,7 @@ const char CLy_Sep[] = { Car_HT, '\0' };
 #define CLy_MinLg     8                         /* Minimum useful message length */
 
 P1(PLy_adsc)      = "ADSC";
+P1(PLy_vtic)      = "VTIC";
 P1(PLy_date)      = "DATE";
 P1(PLy_ngtf)      = "NGTF";
 P1(PLy_ltarf)     = "LTARF";
@@ -104,7 +106,6 @@ void Linky::init()
     this->_iCks = 0;
     this->_GId = 0;
     this->stx_ms = 0;
-    this->dup_thread = false;
 };
 
 // LED initialization
@@ -184,28 +185,24 @@ void Linky::loop()
  */
 void Linky::present()
 {
-    uint8_t id = this->id;
-#ifdef LINKY_DEBUG
-    Serial.print( F( "Linky::present() id=" ));
-    Serial.println( id );
-#endif
-    ::present( id,    S_POWER, PGMSTR( PLy_adsc ));
-    ::present( id+ 1, S_POWER, PGMSTR( PLy_date ));
-    ::present( id+ 2, S_POWER, PGMSTR( PLy_ngtf ));
-    ::present( id+ 3, S_POWER, PGMSTR( PLy_ltarf ));
-    ::present( id+ 4, S_POWER, PGMSTR( PLy_easf01 ));
-    ::present( id+ 5, S_POWER, PGMSTR( PLy_easf02 ));
-    ::present( id+ 6, S_POWER, PGMSTR( PLy_irms1 ));
-    ::present( id+ 7, S_POWER, PGMSTR( PLy_urms1 ));
-    ::present( id+ 8, S_POWER, PGMSTR( PLy_pref ));
-    ::present( id+ 9, S_POWER, PGMSTR( PLy_sinsts ));
-    ::present( id+10, S_POWER, PGMSTR( PLy_smaxsn ));
-    ::present( id+11, S_POWER, PGMSTR( PLy_smaxsnm1 ));
-    ::present( id+12, S_POWER, PGMSTR( PLy_ccasn ));
-    ::present( id+13, S_POWER, PGMSTR( PLy_ccasnm1 ));
-    ::present( id+14, S_POWER, PGMSTR( PLy_prm ));
-    ::present( id+15, S_POWER, PGMSTR( PLy_ntarf ));
-    ::present( id+16, S_POWER, PGMSTR( PLy_hchp ));
+    ::present( CHILD_ID_ADSC,     S_INFO,       PGMSTR( PLy_adsc ));
+    ::present( CHILD_ID_VTIC,     S_INFO,       PGMSTR( PLy_vtic ));
+    ::present( CHILD_ID_DATE,     S_INFO,       PGMSTR( PLy_date ));
+    ::present( CHILD_ID_NGTF,     S_INFO,       PGMSTR( PLy_ngtf ));
+    ::present( CHILD_ID_LTARF,    S_INFO,       PGMSTR( PLy_ltarf ));
+    ::present( CHILD_ID_EASF01,   S_POWER,      PGMSTR( PLy_easf01 ));
+    ::present( CHILD_ID_EASF02,   S_POWER,      PGMSTR( PLy_easf02 ));
+    ::present( CHILD_ID_IRMS1,    S_MULTIMETER, PGMSTR( PLy_irms1 ));
+    ::present( CHILD_ID_URMS1,    S_MULTIMETER, PGMSTR( PLy_urms1 ));
+    ::present( CHILD_ID_PREF,     S_POWER,      PGMSTR( PLy_pref ));
+    ::present( CHILD_ID_SINSTS,   S_POWER,      PGMSTR( PLy_sinsts ));
+    ::present( CHILD_ID_SMAXSN,   S_POWER,      PGMSTR( PLy_smaxsn ));
+    ::present( CHILD_ID_SMAXSN_1, S_POWER,      PGMSTR( PLy_smaxsnm1 ));
+    ::present( CHILD_ID_CCASN,    S_POWER,      PGMSTR( PLy_ccasn ));
+    ::present( CHILD_ID_CCASN_1,  S_POWER,      PGMSTR( PLy_ccasnm1 ));
+    ::present( CHILD_ID_PRM,      S_INFO,       PGMSTR( PLy_prm ));
+    ::present( CHILD_ID_NTARF,    S_INFO,       PGMSTR( PLy_ntarf ));
+    ::present( CHILD_ID_HCHP,     S_BINARY,     PGMSTR( PLy_hchp ));
 }
 
 /**
@@ -222,89 +219,77 @@ void Linky::send( bool all /*=false*/ )
 
     if( all || bitRead( this->_DNFR, let_adsc )){
         msg.clear();
-        ::send( msg.setSensor( id ).setType( V_VAR1 ).set( this->tic.adsc ));
+        ::send( msg.setSensor( CHILD_ID_ADSC ).setType( V_TEXT ).set( this->tic.adsc ));
+    }
+    if( all || bitRead( this->_DNFR, let_vtic )){
+        msg.clear();
+        ::send( msg.setSensor( CHILD_ID_VTIC ).setType( V_TEXT ).set( this->tic.vtic ));
     }
     if( all || bitRead( this->_DNFR, let_date )){
         msg.clear();
-        ::send( msg.setSensor( id+1 ).setType( V_VAR1 ).set( this->tic.date ));
+        ::send( msg.setSensor( CHILD_ID_DATE ).setType( V_TEXT ).set( this->tic.date ));
     }
     if( all || bitRead( this->_DNFR, let_ngtf )){
         msg.clear();
-        ::send( msg.setSensor( id+2 ).setType( V_VAR1 ).set( this->tic.ngtf ));
+        ::send( msg.setSensor( CHILD_ID_NGTF ).setType( V_TEXT ).set( this->tic.ngtf ));
     }
     if( all || bitRead( this->_DNFR, let_ltarf )){
         msg.clear();
-        ::send( msg.setSensor( id+3 ).setType( V_VAR1 ).set( this->tic.ltarf ));
+        ::send( msg.setSensor( CHILD_ID_LTARF ).setType( V_TEXT ).set( this->tic.ltarf ));
     }
     if( all || bitRead( this->_DNFR, let_easf01 )){
         msg.clear();
-        ::send( msg.setSensor( id+4 ).setType( V_KWH ).set( this->tic.easf01 ));
+        ::send( msg.setSensor( CHILD_ID_EASF01 ).setType( V_KWH ).set( this->tic.easf01 / 1000.0, 3 ));
     }
     if( all || bitRead( this->_DNFR, let_easf02 )){
         msg.clear();
-        ::send( msg.setSensor( id+5 ).setType( V_KWH ).set( this->tic.easf02 ));
+        ::send( msg.setSensor( CHILD_ID_EASF02 ).setType( V_KWH ).set( this->tic.easf02 / 1000.0, 3 ));
     }
     if( all || bitRead( this->_DNFR, let_irms1 )){
         msg.clear();
-        ::send( msg.setSensor( id+6 ).setType( V_CURRENT ).set( this->tic.irms1 ));
+        ::send( msg.setSensor( CHILD_ID_IRMS1 ).setType( V_CURRENT ).set( this->tic.irms1 ));
     }
     if( all || bitRead( this->_DNFR, let_urms1 )){
         msg.clear();
-        ::send( msg.setSensor( id+7 ).setType( V_VOLTAGE ).set( this->tic.urms1 ));
+        ::send( msg.setSensor( CHILD_ID_URMS1 ).setType( V_VOLTAGE ).set( this->tic.urms1 ));
     }
     if( all || bitRead( this->_DNFR, let_pref )){
         msg.clear();
-        ::send( msg.setSensor( id+8 ).setType( V_WATT ).set( this->tic.pref ));
+        ::send( msg.setSensor( CHILD_ID_PREF ).setType( V_VA ).set( this->tic.pref * 1000.0, 0 ));
     }
     if( all || bitRead( this->_DNFR, let_sinsts )){
         msg.clear();
-        ::send( msg.setSensor( id+9 ).setType( V_WATT ).set( this->tic.sinsts ));
+        ::send( msg.setSensor( CHILD_ID_SINSTS ).setType( V_VA ).set( this->tic.sinsts ));
     }
-    /*
-    if( all || ( this->_DNFR & bLy_smaxsn )){
+    if( all || bitRead( this->_DNFR, let_smaxsn )){
         msg.clear();
-        ::send( msg.setSensor( id+10 ).setType( V_WATT ).set( this->tic.smaxsn ));
+        ::send( msg.setSensor( CHILD_ID_SMAXSN ).setType( V_VA ).set( this->tic.smaxsn ));
     }
-    if( all || ( this->_DNFR & bLy_smaxsnm1 )){
+    if( all || bitRead( this->_DNFR, let_smaxsnm1 )){
         msg.clear();
-        ::send( msg.setSensor( id+11 ).setType( V_WATT ).set( this->tic.smaxsnm1 ));
+        ::send( msg.setSensor( CHILD_ID_SMAXSN_1 ).setType( V_VA ).set( this->tic.smaxsnm1 ));
     }
-    if( all || ( this->_DNFR & bLy_ccasn )){
+    if( all || bitRead( this->_DNFR, let_ccasn )){
         msg.clear();
-        ::send( msg.setSensor( id+12 ).setType( V_WATT ).set( this->tic.ccasn ));
+        ::send( msg.setSensor( CHILD_ID_CCASN ).setType( V_WATT ).set( this->tic.ccasn ));
     }
-    if( all || ( this->_DNFR & bLy_ccasnm1 )){
+    if( all || bitRead( this->_DNFR, let_ccasnm1 )){
         msg.clear();
-        ::send( msg.setSensor( id+13 ).setType( V_WATT ).set( this->tic.ccasnm1 ));
+        ::send( msg.setSensor( CHILD_ID_CCASN_1 ).setType( V_WATT ).set( this->tic.ccasnm1 ));
     }
-    */
     if( all || bitRead( this->_DNFR, let_prm )){
         msg.clear();
-        ::send( msg.setSensor( id+14 ).setType( V_VAR1 ).set( this->tic.prm ));
+        ::send( msg.setSensor( CHILD_ID_PRM ).setType( V_TEXT ).set( this->tic.prm ));
     }
     if( all || bitRead( this->_DNFR, let_ntarf )){
         msg.clear();
-        ::send( msg.setSensor( id+15 ).setType( V_VAR1 ).set( this->tic.ntarf ));
+        ::send( msg.setSensor( CHILD_ID_NTARF ).setType( V_TEXT ).set( this->tic.ntarf ));
     }
     if( all || bitRead( this->_DNFR, let_hchp )){
         msg.clear();
-        ::send( msg.setSensor( id+16 ).setType( V_VAR1 ).set( this->tic.hchp ));
+        ::send( msg.setSensor( CHILD_ID_HCHP ).setType( V_STATUS ).set( this->tic.hchp ));
     }
     this->_DNFR = 0;
-}
-
-/**
- * Linky::setDup:
- * @dup: whether the next trame should be duplicated.
- *
- * The duplication period is managed by the main program, which takes care of setting
- * this flag on and off.
- *
- * Public.
- */
-void Linky::setDup( bool dup )
-{
-    this->dup_thread = dup;
 }
 
 /**
@@ -346,6 +331,9 @@ void Linky::setup( uint32_t min_period_ms, uint32_t max_period_ms )
 
     /* light on the trame led */
     this->trameLedSet( TRAMENOTOK_MS );
+
+    // send a first value for all sensors
+    this->send( true );
 }
 
 /**
@@ -387,6 +375,7 @@ bool Linky::checkHorodate( const char *p )
  */
 bool Linky::decData( char *dest, linky_etiq_t etiq )
 {
+    // advance _pDec until the value
     _pDec = strtok( NULL, CLy_Sep );
     bool valid = false;
     bool hchp = false;
@@ -404,6 +393,10 @@ bool Linky::decData( char *dest, linky_etiq_t etiq )
                 }
                 valid = ( count == 0 );
             }
+            break;
+
+        case let_vtic:
+            valid = true;
             break;
 
         case let_date:
@@ -446,9 +439,15 @@ bool Linky::decData( char *dest, linky_etiq_t etiq )
                 if( hchp ){
                     this->ledOff( this->hcPin );
                     this->ledOn( this->hpPin );
+                    if( !this->tic.hchp ){
+                        this->sendLog(( char * ) "Change to HP" );
+                    }
                 } else {
                     this->ledOff( this->hpPin );
                     this->ledOn( this->hcPin );
+                    if( this->tic.hchp ){
+                        this->sendLog(( char * ) "Change to HC" );
+                    }
                 }
                 this->tic.hchp = hchp;
                 bitSet( _DNFR, let_hchp );
@@ -547,6 +546,7 @@ bool Linky::decData( uint32_t *dest, linky_etiq_t etiq )
     return( bitRead( _DNFR, etiq ));
 }
 
+/*
 bool Linky::decData( horodate_t *dest, linky_etiq_t etiq )
 {
     _pDec = strtok( NULL, CLy_Sep );
@@ -564,6 +564,7 @@ bool Linky::decData( horodate_t *dest, linky_etiq_t etiq )
 
     return( bitRead( _DNFR, etiq ));
 }
+*/
 
 /**
  * Linky::dupThread:
@@ -573,6 +574,7 @@ bool Linky::decData( horodate_t *dest, linky_etiq_t etiq )
  *
  * Private.
  */
+/*
 void Linky::dupThread()
 {
     if( this->dup_thread ){
@@ -613,6 +615,7 @@ void Linky::dupThread()
         ::send( msg.setSensor( 5 ).setType( V_VAR1 ).set( buffer ));
     }
 }
+*/
 
 /**
  * Linky::ig_checksum:
@@ -681,13 +684,18 @@ bool Linky::ig_checksum()
 void Linky::ig_decode()
 {
     bool found = false;
-    this->dupThread();
+    //this->dupThread();
     _pDec = strtok( _pDec, CLy_Sep );
+    _startLabel = _pDec;
 
     if( !strcmp_P( _pDec, PLy_adsc )){
         found = true;
         this->decData(( char * ) this->tic.adsc, let_adsc );
-      
+
+    } else if( !strcmp_P( _pDec, PLy_vtic )){
+        found = true;
+        this->decData(( char * ) this->tic.vtic, let_vtic );
+
     } else if( !strcmp_P( _pDec, PLy_date )){
         found = true;
         this->decData(( char * ) this->tic.date, let_date );
@@ -747,6 +755,9 @@ void Linky::ig_decode()
     } else if( !strcmp_P( _pDec, PLy_ntarf )){
         found = true;
         this->decData( &this->tic.ntarf, let_ntarf );
+
+    } else {
+        this->logIgnored();
     }
 
 #ifdef LINKY_DEBUG
@@ -773,11 +784,13 @@ void Linky::ig_decode()
  */
 void Linky::ig_receive()
 {
+#ifdef LINKY_DEBUG
+        Serial.print( F( "linkySerial.available:" )); Serial.println( linkySerial.available() ? F( "True" ) : F( "False" ));
+#endif
     while( linkySerial.available()){                   /* At least 1 char has been received */
         char c = linkySerial.read() & 0x7f;            /* Read char, exclude parity */
 #ifdef LINKY_DEBUG
-        //Serial.print( F( "Serial.read()  c=" ));
-        //Serial.println( c, HEX );
+        //Serial.print( F( "Serial.read() c=" )); Serial.println( c, HEX );
 #endif
         /* On going reception */
         if( bitRead( _FR, lst_Rec )){
@@ -833,24 +846,103 @@ void Linky::ig_receive()
         } else if( this->stx_ms > 0 && c == Car_SOIG ){   /* Received start of information group */
             _iRec = 0;
             bitSet( _FR, lst_Rec );             /* Start reception */
+#ifdef LINKY_DEBUG
+            Serial.println( F( "received SOIG" ));
+#endif
 
         /* start of trame */
         } else if( c == Car_STX ){
             this->stx_ms = millis();
+#ifdef LINKY_DEBUG
+            Serial.println( F( "received STX" ));
+#endif
 
         /* if end of trame 
-            we assume that we get one trame every sec. at 9600 bauds */
+            we assume that we get one trame every sec. at 9600 bauds
+            As of 2025-10- 1 (v4.0-2025) delay=1697 */
         } else if( c == Car_ETX ){
             uint32_t now = millis();
             uint32_t delay = now - this->stx_ms;
 #ifdef LINKY_DEBUG
-            Serial.print( F( "EOT found, delay=" ));
+            Serial.print( F( "received ETX, delay=" ));
             Serial.println( delay );
 #endif
-            this->dup_thread = false;
-            this->trameLedSet( delay < 1500 ? TRAMEOK_MS : TRAMENOTOK_MS );
+            //this->dup_thread = false;
+            this->trameLedSet( delay < 2000 ? TRAMEOK_MS : TRAMENOTOK_MS );
         }
     }
+}
+
+/**
+ * Linky::logIgnored:
+ * 
+ * Duplicate the trames reception to the output thread is asked for.
+ * A buffer is built with trimmed label and values, '|'-separated.
+ *
+ * Private.
+ */
+void Linky::logIgnored()
+{
+    char buffer[1+MAX_PAYLOAD];   // MySensors max payload is 25 bytes
+    memset( buffer, '\0', sizeof( buffer ));
+    uint8_t len = 0;
+
+    // prefix
+    String str = "[I] ";
+    strncpy( buffer, str.c_str(), MAX_PAYLOAD );
+    len = str.length();
+
+    // label
+    //char *p = strtok( NULL, CLy_Sep );
+    //String str = p;
+    //str.trim();
+    //strncpy( buffer, str.c_str(), MAX_PAYLOAD );
+    //len = str.length();
+
+    // label
+    char *p = _startLabel;
+    if( p[0] && len<MAX_PAYLOAD-1 ){
+        buffer[len] = '|';
+        len += 1;
+        str = p;
+        str.trim();
+        strncat( buffer, p, MAX_PAYLOAD-len );
+    }
+
+    // horodate/value
+    p = strtok( NULL, CLy_Sep );
+    //if( p[0] && len<MAX_PAYLOAD-1 ){
+    //    buffer[len] = '|';
+    //    len += 1;
+    //    str = p;
+    //    str.trim();
+    //    strncat( buffer, p, MAX_PAYLOAD-len );
+    //}
+
+    // value
+    p = strtok( NULL, CLy_Sep );
+    if( p[0] && len<MAX_PAYLOAD-1 ){
+        buffer[len] = '|';
+        len += 1;
+        str = p;
+        str.trim();
+        strncat( buffer, p, MAX_PAYLOAD-len );
+    }
+
+    this->sendLog(( char * ) buffer );
+}
+
+/**
+ * Linky::sendLog:
+ * @msg: a message to be sent.
+ *
+ * Private.
+ */
+void Linky::sendLog( char *text )
+{
+    MyMessage msg;
+    msg.clear();
+    ::send( msg.setSensor( CHILD_MAIN_LOG ).setType( V_TEXT ).set( text ));
 }
 
 /**
@@ -884,7 +976,6 @@ void Linky::trameLedSet( uint32_t period_ms )
     Serial.println( period_ms );
 #endif
     if( this->led_status_timer.getDelay() != period_ms ){
-
         this->led_status_timer.setDelay( period_ms );
         this->led_status_timer.restart();
     }

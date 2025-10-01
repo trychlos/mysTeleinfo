@@ -1,4 +1,4 @@
-/* ********************************************************************
+/* **********************************************************************************************************
  * Objet decodeur de teleinformation client (TIC)
  * format Linky "historique" ou anciens compteurs
  * electroniques.
@@ -49,7 +49,7 @@
  *                            |  iCks
  * The storing stops at CRC (included), ie a max of 19 chars
  * 
- **********************************************************************
+ **********************************************************************************************************
  * pwi 2019- 9-22 adaptation to Enedis-NOI-CPT_54E v3 TIC standard
  * 
  * TIC standard
@@ -101,23 +101,18 @@
 
 #include <SoftwareSerial.h>
 #include <pwiTimer.h>
-#include <pwiTimer2.h>
 
 #define LINKY_BUFSIZE       32    /* max size of the received, not ignored, information groups */
 #define LINKY_ADSC_SIZE     12
+#define LINKY_VTIC_SIZE      2
 #define LINKY_DATE_SIZE     13
 #define LINKY_NGTF_SIZE     16
 #define LINKY_LTARF_SIZE    16
 #define LINKY_PRM_SIZE      14
 
 typedef struct {
-    char        date[1+LINKY_DATE_SIZE];
-    uint16_t    value;
-}
-  horodate_t;
-
-typedef struct {
     char        adsc[1+LINKY_ADSC_SIZE];
+    char        vtic[1+LINKY_VTIC_SIZE];
     char        date[1+LINKY_DATE_SIZE];
     char        ngtf[1+LINKY_NGTF_SIZE];
     char        ltarf[1+LINKY_LTARF_SIZE];
@@ -127,10 +122,10 @@ typedef struct {
     uint16_t    urms1;
     uint8_t     pref;
     uint16_t    sinsts;
-    horodate_t  smaxsn;
-    horodate_t  smaxsnm1;
-    horodate_t  ccasn;
-    horodate_t  ccasnm1;
+    uint16_t    smaxsn;
+    uint16_t    smaxsnm1;
+    uint16_t    ccasn;
+    uint16_t    ccasnm1;
     char        prm[1+LINKY_PRM_SIZE];
     uint8_t     ntarf;
     bool        hchp;
@@ -143,6 +138,7 @@ typedef struct {
  */
 typedef enum {
     let_adsc = 0,
+    let_vtic,
     let_date,
     let_ngtf,
     let_ltarf,
@@ -181,7 +177,6 @@ class Linky
         virtual void              loop();
         virtual void              present();
         virtual void              send( bool all=false );
-        virtual void              setDup( bool dup );
         virtual void              setup( uint32_t min_period_ms, uint32_t max_period_ms );
 
     private:
@@ -204,6 +199,7 @@ class Linky
                 uint32_t          _DNFR;                    /* Data new flag register */
                 char             *_pRec;                    /* Reception pointer in the buffer */
                 char             *_pDec;                    /* Decode pointer in the buffer */
+                char             *_startLabel;              /* the start of the label */
                 uint8_t           _iRec;                    /*  Received char index */
                 uint8_t           _iCks;                    /* Index of Cks in the received message */
                 uint8_t           _GId;                     /* Group identification */
@@ -214,11 +210,10 @@ class Linky
                 pwiTimer          min_period;
                 pwiTimer          max_period;
                 pwiTimer          timeout_timer;
-                bool              dup_thread;
 
                 // because the LED is visible on the front panel, we choose to manage it with a hardware timer
-                pwiTimer2         led_status_timer;         /* 3 sec if OK, 1 sec else */
-                pwiTimer2         led_on_timer;             /* 0.1 sec */
+                pwiTimer          led_status_timer;         /* 3 sec if OK, 1 sec else */
+                pwiTimer          led_on_timer;             /* 0.1 sec */
 
         /* private methods
          */
@@ -229,11 +224,12 @@ class Linky
                 bool              decData( uint8_t *dest, linky_etiq_t etiq );
                 bool              decData( uint16_t *dest, linky_etiq_t etiq );
                 bool              decData( uint32_t *dest, linky_etiq_t etiq );
-                bool              decData( horodate_t *dest, linky_etiq_t etiq );
-                void              dupThread( void );
+                //bool              decData( horodate_t *dest, linky_etiq_t etiq );
                 bool              ig_checksum( void );
                 void              ig_decode( void );
                 void              ig_receive( void );
+                void              logIgnored();
+                void              sendLog( char *msg );
                 void              trameLedSet( uint32_t period_ms );
 
         /* static methods
