@@ -105,11 +105,12 @@
 //#define LINKY_BUFSIZE       32    /* max size of the received, not ignored, information groups */
 #define LINKY_BUFSIZE       64    /* max size of the received, not ignored, information groups */
 #define LINKY_ADSC_SIZE     12
-#define LINKY_VTIC_SIZE      2
 #define LINKY_DATE_SIZE     13
-#define LINKY_NGTF_SIZE     16
 #define LINKY_LTARF_SIZE    16
+#define LINKY_NGTF_SIZE     16
 #define LINKY_PRM_SIZE      14
+#define LINKY_STGE_SIZE      8
+#define LINKY_VTIC_SIZE      2
 
 typedef struct {
     char        adsc[1+LINKY_ADSC_SIZE];
@@ -117,6 +118,7 @@ typedef struct {
     char        date[1+LINKY_DATE_SIZE];
     char        ngtf[1+LINKY_NGTF_SIZE];
     char        ltarf[1+LINKY_LTARF_SIZE];
+    uint32_t    east;
     uint32_t    easf01;
     uint32_t    easf02;
     uint8_t     irms1;
@@ -127,6 +129,7 @@ typedef struct {
     uint16_t    smaxsnm1;
     uint16_t    ccasn;
     uint16_t    ccasnm1;
+    char        stge[1+LINKY_STGE_SIZE];
     char        prm[1+LINKY_PRM_SIZE];
     uint8_t     ntarf;
     bool        hchp;
@@ -143,6 +146,7 @@ typedef enum {
     let_date,
     let_ngtf,
     let_ltarf,
+    let_east,
     let_easf01,
     let_easf02,
     let_irms1,
@@ -153,6 +157,7 @@ typedef enum {
     let_smaxsnm1,
     let_ccasn,
     let_ccasnm1,
+    let_stge,
     let_prm,
     let_ntarf,
     let_hchp

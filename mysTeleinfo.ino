@@ -291,7 +291,9 @@ void loop()
 {
     mainInitialLoop();
     pwiTimer::Loop();
-    linky.loop();
+    if( main_log_initial_sent ){
+        linky.loop();
+    }
 }
 
 void receive( const MyMessage &message )
