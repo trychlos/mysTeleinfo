@@ -24,10 +24,10 @@
                   use standard SoftwareSerial library
    pwi 2025- 9-30 v4.0-2025
                   review the whole children identifiers and types (align on mysCellar, adapt to HA)
-                  provides a minimal set of managed labels
+                  let the ignored labels be sent to the gateway
 
- Sketch uses 23554 bytes (76%) of program storage space. Maximum is 30720 bytes.
- Global variables use 1057 bytes (51%) of dynamic memory, leaving 991 bytes for local variables. Maximum is 2048 bytes.
+Sketch uses 23126 bytes (75%) of program storage space. Maximum is 30720 bytes.
+Global variables use 1170 bytes (57%) of dynamic memory, leaving 991 bytes for local variables. Maximum is 2048 bytes.
 */
 
 // uncomment for debugging this sketch
@@ -104,13 +104,14 @@ void mainPresentation()
 #ifdef SKETCH_DEBUG
     Serial.println( F( "mainPresentation()" ));
 #endif
-    //                                                  1234567890123456789012345
-    present( CHILD_MAIN_LOG,              S_INFO,   F( "Board logs" ));
-    present( CHILD_MAIN_ACTION_RESET,     S_BINARY, F( "Action: reset eeprom" ));
-    present( CHILD_MAIN_ACTION_DUMP,      S_BINARY, F( "Action: dump eeprom" ));
-    present( CHILD_MAIN_PARM_DUMP_PERIOD, S_INFO,   F( "Parm: eeprom dump period" ));
-    present( CHILD_MAIN_PARM_MIN_PERIOD,  S_INFO,   F( "Parm: report min period" ));
-    present( CHILD_MAIN_PARM_MAX_PERIOD,  S_INFO,   F( "Parm: report max period" ));
+    //                                                    1234567890123456789012345
+    present( CHILD_MAIN_LOG,                S_INFO,   F( "Board logs" ));
+    present( CHILD_MAIN_ACTION_RESET,       S_BINARY, F( "Action: reset eeprom" ));
+    present( CHILD_MAIN_ACTION_DUMP,        S_BINARY, F( "Action: dump eeprom" ));
+    present( CHILD_MAIN_ACTION_LOG_IGNORED, S_BINARY, F( "Action: log ignored" ));
+    present( CHILD_MAIN_PARM_DUMP_PERIOD,   S_INFO,   F( "Parm: eeprom dump period" ));
+    present( CHILD_MAIN_PARM_MIN_PERIOD,    S_INFO,   F( "Parm: report min period" ));
+    present( CHILD_MAIN_PARM_MAX_PERIOD,    S_INFO,   F( "Parm: report max period" ));
 }
 
 void mainSetup()
@@ -122,6 +123,7 @@ void mainSetup()
     autodump_timer.start();
     mainActionResetSend();
     mainActionDumpSend();
+    mainActionLogIgnoredSend();
     mainAutoDumpSend();
     mainMinPeriodSend();
     mainMaxPeriodSend();
@@ -151,6 +153,28 @@ void mainActionDumpSend()
     uint8_t payload = 0;
 #ifdef SKETCH_DEBUG
     Serial.print( F( "[mainActionDumpSend] sensor=" ));
+    Serial.print( sensor_id );
+    Serial.print( F( ", type=" ));
+    Serial.print( msg_type );
+    Serial.print( F( ", payload=" ));
+    Serial.println( payload );
+#endif
+    msg.clear();
+    send( msg.setSensor( sensor_id ).setType( msg_type ).set( payload ));
+}
+
+void mainActionLogIgnoredSet( bool status )
+{
+    linky.logIgnoredSet( status );
+}
+
+void mainActionLogIgnoredSend()
+{
+    uint8_t sensor_id = CHILD_MAIN_ACTION_LOG_IGNORED;
+    uint8_t msg_type = V_STATUS;
+    uint8_t payload = linky.logIgnoredGet();
+#ifdef SKETCH_DEBUG
+    Serial.print( F( "[mainActionLogIgnoredSend] sensor=" ));
     Serial.print( sensor_id );
     Serial.print( F( ", type=" ));
     Serial.print( msg_type );
@@ -299,6 +323,7 @@ void loop()
 void receive( const MyMessage &message )
 {
     uint8_t cmd = message.getCommand();
+    bool valid = false;
 
     char payload[MAX_PAYLOAD+1];
     memset( payload, '\0', sizeof( payload ));
@@ -325,6 +350,7 @@ void receive( const MyMessage &message )
                     mainActionResetDo();
                     mainActionResetSend();
                     mainLogSend(( char * ) "eeprom reset done" );
+                    valid = true;
                 }
                 break;
             case CHILD_MAIN_ACTION_DUMP:
@@ -332,32 +358,49 @@ void receive( const MyMessage &message )
                     mainActionDumpDo();
                     mainActionDumpSend();
                     mainLogSend(( char * ) "eeprom dump done" );
+                    valid = true;
+                }
+                break;
+            case CHILD_MAIN_ACTION_LOG_IGNORED:
+                if( message.type == V_STATUS ){
+                    mainActionLogIgnoredSet( ureq );
+                    mainActionLogIgnoredSend();
+                    valid = true;
                 }
                 break;
             case CHILD_MAIN_PARM_DUMP_PERIOD:
                 if( message.type == V_TEXT && strlen( payload )){
                     mainAutoDumpSet( ulong );
                     mainAutoDumpSend();
+                    valid = true;
                 }
                 break;
             case CHILD_MAIN_PARM_MAX_PERIOD:
                 if( message.type == V_TEXT && strlen( payload )){
                     mainMaxPeriodSet( ulong );
                     mainMaxPeriodSend();
+                    valid = true;
                 }
                 break;
             case CHILD_MAIN_PARM_MIN_PERIOD:
                 if( message.type == V_TEXT && strlen( payload )){
                     mainMinPeriodSet( ulong );
                     mainMinPeriodSend();
+                    valid = true;
                 }
                 break;
         }
     } // end of cmd == C_SET
+
+    if( !valid ){
+        //                      1234567890123456789012345
+        mainLogSend(( char * ) "Unknowned or invalid msg" );
+    }
 }
 
 void dumpData()
 {
+    mainActionLogIgnoredSend();
     mainMaxPeriodSend();
     mainMinPeriodSend();
     mainAutoDumpSend();

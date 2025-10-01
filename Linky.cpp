@@ -14,6 +14,9 @@
 #include "childids.h"
 #include "Linky.h"
 
+// HomeAssistant has issues with messages which are received too fast. So have unfortunately to wait sometime....
+#define WAITMS 5
+
 // uncomment for debug this class
 #define LINKY_DEBUG
 
@@ -53,6 +56,7 @@ P1(PLy_smaxsn)    = "SMAXSN";
 P1(PLy_smaxsnm1)  = "SMAXSN-1";
 P1(PLy_ccasn)     = "CCASN";
 P1(PLy_ccasnm1)   = "CCASN-1";
+P1(PLy_umoy1)     = "UMOY1";
 P1(PLy_stge)      = "STGE";
 P1(PLy_prm)       = "PRM";
 P1(PLy_ntarf)     = "NTARF";
@@ -60,8 +64,8 @@ P1(PLy_hchp)      = "HCHP";
 
 //                   1234567890123456
 P1(PLy_ngtf_HCHP) = "H PLEINE/CREUSE ";
-P1(PLy_ltarf_HP)  = "  HEURE  PLEINE ";
-P1(PLy_ltarf_HC)  = "  HEURE  CREUSE ";
+P1(PLy_ltarf_HP)  = " HEURE  PLEINE  ";
+P1(PLy_ltarf_HC)  = " HEURE  CREUSE  ";
 
 // Frequency of the trame LED (slow if OK, fast else)
 #define TRAMEOK_MS      3000
@@ -109,6 +113,9 @@ void Linky::init()
     this->_iCks = 0;
     this->_GId = 0;
     this->stx_ms = 0;
+
+    // logs are always ignored at startup
+    this->log_ignored = false;
 };
 
 // LED initialization
@@ -153,6 +160,30 @@ void Linky::ledOn( uint8_t pin )
 }
 
 /**
+ * Linky::logIgnoredGet:
+ * 
+ * Returns the current status of the 'log_ignored' flag,
+ * i.e. whether we want send to the gateway ignored information groups
+ *
+ * Public.
+ */
+bool Linky::logIgnoredGet( void )
+{
+    return this->log_ignored;
+}
+
+/**
+ * Linky::logIgnoredSet:
+ * @status: whether we want log ignored information groups.
+ *
+ * Public.
+ */
+void Linky::logIgnoredSet( bool status )
+{
+    this->log_ignored = status;
+}
+
+/**
  * Linky::loop:
  * 
  * Manage all readings and interpretations :
@@ -187,25 +218,47 @@ void Linky::loop()
  */
 void Linky::present()
 {
+    wait( WAITMS );
     ::present( CHILD_ID_ADSC,     S_INFO,       PGMSTR( PLy_adsc ));
+    wait( WAITMS );
     ::present( CHILD_ID_VTIC,     S_INFO,       PGMSTR( PLy_vtic ));
+    wait( WAITMS );
     ::present( CHILD_ID_DATE,     S_INFO,       PGMSTR( PLy_date ));
+    wait( WAITMS );
     ::present( CHILD_ID_NGTF,     S_INFO,       PGMSTR( PLy_ngtf ));
+    wait( WAITMS );
     ::present( CHILD_ID_LTARF,    S_INFO,       PGMSTR( PLy_ltarf ));
+    wait( WAITMS );
     ::present( CHILD_ID_EAST,     S_POWER,      PGMSTR( PLy_east ));
+    wait( WAITMS );
     ::present( CHILD_ID_EASF01,   S_POWER,      PGMSTR( PLy_easf01 ));
+    wait( WAITMS );
     ::present( CHILD_ID_EASF02,   S_POWER,      PGMSTR( PLy_easf02 ));
+    wait( WAITMS );
     ::present( CHILD_ID_IRMS1,    S_MULTIMETER, PGMSTR( PLy_irms1 ));
+    wait( WAITMS );
     ::present( CHILD_ID_URMS1,    S_MULTIMETER, PGMSTR( PLy_urms1 ));
+    wait( WAITMS );
     ::present( CHILD_ID_PREF,     S_POWER,      PGMSTR( PLy_pref ));
+    wait( WAITMS );
     ::present( CHILD_ID_SINSTS,   S_POWER,      PGMSTR( PLy_sinsts ));
+    wait( WAITMS );
     ::present( CHILD_ID_SMAXSN,   S_POWER,      PGMSTR( PLy_smaxsn ));
+    wait( WAITMS );
     ::present( CHILD_ID_SMAXSN_1, S_POWER,      PGMSTR( PLy_smaxsnm1 ));
+    wait( WAITMS );
     ::present( CHILD_ID_CCASN,    S_POWER,      PGMSTR( PLy_ccasn ));
+    wait( WAITMS );
     ::present( CHILD_ID_CCASN_1,  S_POWER,      PGMSTR( PLy_ccasnm1 ));
+    wait( WAITMS );
+    ::present( CHILD_ID_UMOY1,    S_MULTIMETER, PGMSTR( PLy_umoy1 ));
+    wait( WAITMS );
     ::present( CHILD_ID_STGE,     S_INFO,       PGMSTR( PLy_stge ));
+    wait( WAITMS );
     ::present( CHILD_ID_PRM,      S_INFO,       PGMSTR( PLy_prm ));
+    wait( WAITMS );
     ::present( CHILD_ID_NTARF,    S_INFO,       PGMSTR( PLy_ntarf ));
+    wait( WAITMS );
     ::present( CHILD_ID_HCHP,     S_BINARY,     PGMSTR( PLy_hchp ));
 }
 
@@ -223,82 +276,107 @@ void Linky::send( bool all /*=false*/ )
 
     if( all || bitRead( this->_DNFR, let_adsc )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_ADSC ).setType( V_TEXT ).set( this->tic.adsc ));
     }
     if( all || bitRead( this->_DNFR, let_vtic )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_VTIC ).setType( V_TEXT ).set( this->tic.vtic ));
     }
     if( all || bitRead( this->_DNFR, let_date )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_DATE ).setType( V_TEXT ).set( this->tic.date ));
     }
     if( all || bitRead( this->_DNFR, let_ngtf )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_NGTF ).setType( V_TEXT ).set( this->tic.ngtf ));
     }
     if( all || bitRead( this->_DNFR, let_ltarf )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_LTARF ).setType( V_TEXT ).set( this->tic.ltarf ));
     }
     if( all || bitRead( this->_DNFR, let_east )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_EAST ).setType( V_KWH ).set( this->tic.east / 1000.0, 3 ));
     }
     if( all || bitRead( this->_DNFR, let_easf01 )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_EASF01 ).setType( V_KWH ).set( this->tic.easf01 / 1000.0, 3 ));
     }
     if( all || bitRead( this->_DNFR, let_easf02 )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_EASF02 ).setType( V_KWH ).set( this->tic.easf02 / 1000.0, 3 ));
     }
     if( all || bitRead( this->_DNFR, let_irms1 )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_IRMS1 ).setType( V_CURRENT ).set( this->tic.irms1 ));
     }
     if( all || bitRead( this->_DNFR, let_urms1 )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_URMS1 ).setType( V_VOLTAGE ).set( this->tic.urms1 ));
     }
     if( all || bitRead( this->_DNFR, let_pref )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_PREF ).setType( V_VA ).set( this->tic.pref * 1000 ));
     }
     if( all || bitRead( this->_DNFR, let_sinsts )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_SINSTS ).setType( V_VA ).set( this->tic.sinsts ));
     }
     if( all || bitRead( this->_DNFR, let_smaxsn )){
         msg.clear();
-        ::send( msg.setSensor( CHILD_ID_SMAXSN ).setType( V_VA ).set( this->tic.smaxsn ));
+        wait( WAITMS );
+        ::send( msg.setSensor( CHILD_ID_SMAXSN ).setType( V_VA ).set( this->tic.smaxsn.value ));
     }
     if( all || bitRead( this->_DNFR, let_smaxsnm1 )){
         msg.clear();
-        ::send( msg.setSensor( CHILD_ID_SMAXSN_1 ).setType( V_VA ).set( this->tic.smaxsnm1 ));
+        wait( WAITMS );
+        ::send( msg.setSensor( CHILD_ID_SMAXSN_1 ).setType( V_VA ).set( this->tic.smaxsnm1.value ));
     }
     if( all || bitRead( this->_DNFR, let_ccasn )){
         msg.clear();
-        ::send( msg.setSensor( CHILD_ID_CCASN ).setType( V_WATT ).set( this->tic.ccasn ));
+        wait( WAITMS );
+        ::send( msg.setSensor( CHILD_ID_CCASN ).setType( V_WATT ).set( this->tic.ccasn.value ));
     }
     if( all || bitRead( this->_DNFR, let_ccasnm1 )){
         msg.clear();
-        ::send( msg.setSensor( CHILD_ID_CCASN_1 ).setType( V_WATT ).set( this->tic.ccasnm1 ));
+        wait( WAITMS );
+        ::send( msg.setSensor( CHILD_ID_CCASN_1 ).setType( V_WATT ).set( this->tic.ccasnm1.value ));
+    }
+    if( all || bitRead( this->_DNFR, let_umoy1 )){
+        msg.clear();
+        wait( WAITMS );
+        ::send( msg.setSensor( CHILD_ID_UMOY1 ).setType( V_VOLTAGE ).set( this->tic.umoy1.value ));
     }
     if( all || bitRead( this->_DNFR, let_stge )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_STGE ).setType( V_TEXT ).set( this->tic.stge ));
     }
     if( all || bitRead( this->_DNFR, let_prm )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_PRM ).setType( V_TEXT ).set( this->tic.prm ));
     }
     if( all || bitRead( this->_DNFR, let_ntarf )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_NTARF ).setType( V_TEXT ).set( this->tic.ntarf ));
     }
     if( all || bitRead( this->_DNFR, let_hchp )){
         msg.clear();
+        wait( WAITMS );
         ::send( msg.setSensor( CHILD_ID_HCHP ).setType( V_STATUS ).set( this->tic.hchp ));
     }
     this->_DNFR = 0;
@@ -559,7 +637,6 @@ bool Linky::decData( uint32_t *dest, linky_etiq_t etiq )
     return( bitRead( this->_DNFR, etiq ));
 }
 
-/*
 bool Linky::decData( horodate_t *dest, linky_etiq_t etiq )
 {
     _pDec = strtok( NULL, CLy_Sep );
@@ -577,7 +654,6 @@ bool Linky::decData( horodate_t *dest, linky_etiq_t etiq )
 
     return( bitRead( _DNFR, etiq ));
 }
-*/
 
 /**
  * Linky::ig_checksum:
@@ -664,11 +740,15 @@ void Linky::ig_decode()
     } else if( !strcmp_P( this->_pDec, PLy_ngtf )){
         found = true;
         this->decData(( char * ) this->tic.ngtf, let_ngtf );
-      
+
     } else if( !strcmp_P( this->_pDec, PLy_ltarf )){
         found = true;
         this->decData(( char * ) this->tic.ltarf, let_ltarf );
-      
+
+    } else if( !strcmp_P( this->_pDec, PLy_east )){
+        found = true;
+        this->decData( &this->tic.east, let_east );
+
     } else if( !strcmp_P( this->_pDec, PLy_easf01 )){
         found = true;
         this->decData( &this->tic.easf01, let_easf01 );
@@ -709,6 +789,14 @@ void Linky::ig_decode()
         found = true;
         this->decData( &this->tic.ccasnm1, let_ccasnm1 );
       
+    } else if( !strcmp_P( this->_pDec, PLy_umoy1 )){
+        found = true;
+        this->decData( &this->tic.umoy1, let_umoy1 );
+
+    } else if( !strcmp_P( this->_pDec, PLy_stge )){
+        found = true;
+        this->decData(( char * ) this->tic.stge, let_stge );
+
     } else if( !strcmp_P( this->_pDec, PLy_prm )){
         found = true;
         this->decData(( char * ) this->tic.prm, let_prm );
@@ -717,7 +805,7 @@ void Linky::ig_decode()
         found = true;
         this->decData( &this->tic.ntarf, let_ntarf );
 
-    } else {
+    } else if( this->logIgnoredGet()){
         this->logIgnored();
     }
 

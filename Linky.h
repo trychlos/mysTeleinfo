@@ -113,6 +113,12 @@
 #define LINKY_VTIC_SIZE      2
 
 typedef struct {
+    char        date[1+LINKY_DATE_SIZE];
+    uint16_t    value;
+}
+  horodate_t;
+
+typedef struct {
     char        adsc[1+LINKY_ADSC_SIZE];
     char        vtic[1+LINKY_VTIC_SIZE];
     char        date[1+LINKY_DATE_SIZE];
@@ -125,10 +131,11 @@ typedef struct {
     uint16_t    urms1;
     uint8_t     pref;
     uint16_t    sinsts;
-    uint16_t    smaxsn;
-    uint16_t    smaxsnm1;
-    uint16_t    ccasn;
-    uint16_t    ccasnm1;
+    horodate_t  smaxsn;
+    horodate_t  smaxsnm1;
+    horodate_t  ccasn;
+    horodate_t  ccasnm1;
+    horodate_t  umoy1;
     char        stge[1+LINKY_STGE_SIZE];
     char        prm[1+LINKY_PRM_SIZE];
     uint8_t     ntarf;
@@ -157,6 +164,7 @@ typedef enum {
     let_smaxsnm1,
     let_ccasn,
     let_ccasnm1,
+    let_umoy1,
     let_stge,
     let_prm,
     let_ntarf,
@@ -181,6 +189,8 @@ class Linky
         virtual void              ledOff( uint8_t pin );
         virtual void              ledOn( uint8_t pin );
         virtual void              loop();
+        virtual bool              logIgnoredGet( void );
+        virtual void              logIgnoredSet( bool status );
         virtual void              present();
         virtual void              send( bool all=false );
         virtual void              setup( uint32_t min_period_ms, uint32_t max_period_ms );
@@ -221,16 +231,19 @@ class Linky
                 pwiTimer          led_status_timer;         /* 3 sec if OK, 1 sec else */
                 pwiTimer          led_on_timer;             /* 0.1 sec */
 
+                // whether we want log ignored information groups
+                bool              log_ignored;
+
         /* private methods
          */
                 void              init();
                 void              init_led( uint8_t *dest, uint8_t pin );
                 bool              checkHorodate( const char *p );
                 bool              decData( char *dest, linky_etiq_t etiq );
+                bool              decData( horodate_t *dest, linky_etiq_t etiq );
                 bool              decData( uint8_t *dest, linky_etiq_t etiq );
                 bool              decData( uint16_t *dest, linky_etiq_t etiq );
                 bool              decData( uint32_t *dest, linky_etiq_t etiq );
-                //bool              decData( horodate_t *dest, linky_etiq_t etiq );
                 bool              ig_checksum( void );
                 void              ig_decode( void );
                 void              ig_receive( void );
