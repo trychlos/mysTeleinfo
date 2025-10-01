@@ -102,7 +102,8 @@
 #include <SoftwareSerial.h>
 #include <pwiTimer.h>
 
-#define LINKY_BUFSIZE       32    /* max size of the received, not ignored, information groups */
+//#define LINKY_BUFSIZE       32    /* max size of the received, not ignored, information groups */
+#define LINKY_BUFSIZE       64    /* max size of the received, not ignored, information groups */
 #define LINKY_ADSC_SIZE     12
 #define LINKY_VTIC_SIZE      2
 #define LINKY_DATE_SIZE     13

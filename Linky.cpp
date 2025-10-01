@@ -15,7 +15,7 @@
 #include "Linky.h"
 
 // uncomment for debug this class
-//#define LINKY_DEBUG
+#define LINKY_DEBUG
 
 /****************************** Macros ********************************/
 #ifndef P1
@@ -56,6 +56,7 @@ P1(PLy_prm)       = "PRM";
 P1(PLy_ntarf)     = "NTARF";
 P1(PLy_hchp)      = "HCHP";
 
+//                   1234567890123456
 P1(PLy_ngtf_HCHP) = "H PLEINE/CREUSE ";
 P1(PLy_ltarf_HP)  = "  HEURE  PLEINE ";
 P1(PLy_ltarf_HC)  = "  HEURE  CREUSE ";
@@ -171,7 +172,6 @@ void Linky::loop()
         Serial.println();
 #endif
     }
-
     /* 2th part, receiver processing - always run */
     this->ig_receive();
 }
@@ -255,7 +255,7 @@ void Linky::send( bool all /*=false*/ )
     }
     if( all || bitRead( this->_DNFR, let_pref )){
         msg.clear();
-        ::send( msg.setSensor( CHILD_ID_PREF ).setType( V_VA ).set( this->tic.pref * 1000.0, 0 ));
+        ::send( msg.setSensor( CHILD_ID_PREF ).setType( V_VA ).set( this->tic.pref * 1000 ));
     }
     if( all || bitRead( this->_DNFR, let_sinsts )){
         msg.clear();
@@ -686,7 +686,7 @@ void Linky::ig_decode()
     bool found = false;
     //this->dupThread();
     _pDec = strtok( _pDec, CLy_Sep );
-    _startLabel = _pDec;
+    //_startLabel = _pDec;
 
     if( !strcmp_P( _pDec, PLy_adsc )){
         found = true;
@@ -784,9 +784,6 @@ void Linky::ig_decode()
  */
 void Linky::ig_receive()
 {
-#ifdef LINKY_DEBUG
-        Serial.print( F( "linkySerial.available:" )); Serial.println( linkySerial.available() ? F( "True" ) : F( "False" ));
-#endif
     while( linkySerial.available()){                   /* At least 1 char has been received */
         char c = linkySerial.read() & 0x7f;            /* Read char, exclude parity */
 #ifdef LINKY_DEBUG
@@ -885,23 +882,21 @@ void Linky::logIgnored()
 {
     char buffer[1+MAX_PAYLOAD];   // MySensors max payload is 25 bytes
     memset( buffer, '\0', sizeof( buffer ));
-    uint8_t len = 0;
 
     // prefix
-    String str = "[I] ";
-    strncpy( buffer, str.c_str(), MAX_PAYLOAD );
-    len = str.length();
+    strcpy( buffer, "[I]: " );
+    uint8_t len = strlen( buffer );
 
     // label
     //char *p = strtok( NULL, CLy_Sep );
-    //String str = p;
+    String str;
     //str.trim();
     //strncpy( buffer, str.c_str(), MAX_PAYLOAD );
     //len = str.length();
 
     // label
-    char *p = _startLabel;
-    if( p[0] && len<MAX_PAYLOAD-1 ){
+    char *p = _pDec;
+    if( p && p[0] && len<MAX_PAYLOAD-1 ){
         buffer[len] = '|';
         len += 1;
         str = p;
@@ -921,7 +916,7 @@ void Linky::logIgnored()
 
     // value
     p = strtok( NULL, CLy_Sep );
-    if( p[0] && len<MAX_PAYLOAD-1 ){
+    if( p && p[0] && len<MAX_PAYLOAD-1 ){
         buffer[len] = '|';
         len += 1;
         str = p;
